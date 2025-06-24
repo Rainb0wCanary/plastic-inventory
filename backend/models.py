@@ -1,0 +1,69 @@
+from sqlalchemy import Column, Integer, String, Float, ForeignKey, DateTime
+from sqlalchemy.orm import relationship
+from database import Base
+from datetime import datetime
+
+class Role(Base):
+    __tablename__ = "roles"
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, unique=True, index=True)
+    users = relationship("User", back_populates="role")
+
+
+class Group(Base):
+    __tablename__ = "groups"
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, unique=True, index=True)
+    users = relationship("User", back_populates="group")
+
+
+class User(Base):
+    __tablename__ = "users"
+    id = Column(Integer, primary_key=True, index=True)
+    username = Column(String, unique=True, index=True)
+    hashed_password = Column(String)
+    role_id = Column(Integer, ForeignKey("roles.id"), nullable=False)
+    group_id = Column(Integer, ForeignKey("groups.id"), nullable=True)
+    is_active = Column(Integer, default=1)  # 1 - активен, 0 - заблокирован
+    role = relationship("Role", back_populates="users")
+    group = relationship("Group", back_populates="users")
+
+
+class Project(Base):
+    __tablename__ = "projects"
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, unique=True, index=True)  
+    description = Column(String, nullable=True)
+    group_id = Column(Integer, ForeignKey("groups.id"), nullable=True)  # Привязка к группе
+    group = relationship("Group")
+    usages = relationship("Usage", back_populates="project")
+
+
+class Spool(Base):
+    __tablename__ = "spools"
+
+    id = Column(Integer, primary_key=True, index=True)
+    type = Column(String)
+    color = Column(String)
+    weight_total = Column(Float)
+    weight_remaining = Column(Float)
+    qr_code_path = Column(String)
+    group_id = Column(Integer, ForeignKey("groups.id"), nullable=True)  # Привязка к группе
+
+    usages = relationship("Usage", back_populates="spool")
+
+
+class Usage(Base):
+    __tablename__ = "usages"
+
+    id = Column(Integer, primary_key=True, index=True)
+    spool_id = Column(Integer, ForeignKey("spools.id"))
+    project_id = Column(Integer, ForeignKey("projects.id"), nullable=True)
+    group_id = Column(Integer, ForeignKey("groups.id"), nullable=True)  # Привязка к группе
+    amount_used = Column(Float)
+    purpose = Column(String)
+    timestamp = Column(DateTime, default=datetime.utcnow)
+
+    spool = relationship("Spool", back_populates="usages")
+    project = relationship("Project", back_populates="usages")
+    group = relationship("Group")

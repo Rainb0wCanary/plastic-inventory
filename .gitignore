@@ -1,0 +1,32 @@
+.env
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.sqlite3
+*.db
+
+# venv
+venv/
+.env/
+.venv/
+ENV/
+env/
+.Python
+
+# Alembic
+alembic/versions/
+
+# VSCode
+.vscode/
+
+# Логи
+*.log
+
+# Jupyter
+*.ipynb_checkpoints
+
+# OS
+.DS_Store
+Thumbs.db
