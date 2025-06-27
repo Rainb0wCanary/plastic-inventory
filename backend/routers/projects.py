@@ -2,15 +2,20 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 from database import SessionLocal
-from models import Project, User
+from models import Project, User, Group
 from fastapi.security import OAuth2PasswordBearer
 from jose import jwt, JWTError
+import os
+from dotenv import load_dotenv
 
 router = APIRouter()
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
-SECRET_KEY = "supersecretkey"
-ALGORITHM = "HS256"
+load_dotenv()
+SECRET_KEY = os.getenv("SECRET_KEY")
+ALGORITHM = os.getenv("ALGORITHM")
+if not SECRET_KEY or not ALGORITHM:
+    raise RuntimeError("SECRET_KEY и ALGORITHM должны быть заданы в .env")
 
 def get_db():
     db = SessionLocal()
@@ -45,16 +50,24 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
     return user
 
 @router.post("/", response_model=ProjectOut)
-def create_project(project: ProjectCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+def create_project(
+    project: ProjectCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
     is_admin = current_user.role and current_user.role.name == "admin"
-    is_moderator = current_user.role and current_user.role.name == "moderator"
+    # --- Проверка группы ---
     if is_admin and project.group_id:
         group_id = project.group_id
+        # Исправлено: используем импортированный Group
+        group = db.query(Group).filter_by(id=group_id).first()
+        if not group:
+            raise HTTPException(status_code=404, detail="Группа не найдена")
     else:
-        # для модератора и обычного пользователя — только своя группа
         group_id = current_user.group_id
+
     if db.query(Project).filter(Project.name == project.name, Project.group_id == group_id).first():
-        raise HTTPException(status_code=400, detail="Проект с таким именем уже существует в вашей группе")
+        raise HTTPException(status_code=400, detail="Проект с таким именем уже существует в этой группе")
     db_project = Project(name=project.name, description=project.description, group_id=group_id)
     db.add(db_project)
     db.commit()
@@ -67,3 +80,14 @@ def get_projects(db: Session = Depends(get_db), current_user: User = Depends(get
     if is_admin:
         return db.query(Project).all()
     return db.query(Project).filter(Project.group_id == current_user.group_id).all()
+
+@router.delete("/{project_id}", status_code=200)
+def delete_project(project_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    if not current_user.role or current_user.role.name != "admin":
+        raise HTTPException(status_code=403, detail="Только админ может удалять проекты")
+    project = db.query(Project).filter(Project.id == project_id).first()
+    if not project:
+        raise HTTPException(status_code=404, detail="Проект не найден")
+    db.delete(project)
+    db.commit()
+    return {"ok": True}

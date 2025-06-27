@@ -1,5 +1,5 @@
 from database import SessionLocal
-from models import Role, Group, User, Project, Spool, Usage
+from models import Role, Group, User, Project, Spool, Usage, PlasticType
 from sqlalchemy.exc import IntegrityError
 from datetime import datetime
 from passlib.hash import bcrypt
@@ -7,6 +7,15 @@ from utils.qr_generator import generate_qr
 
 def hash_password(password: str) -> str:
     return bcrypt.hash(password)
+
+def ensure_standard_plastic_types():
+    std_types = ["PLA", "ABS", "PETG", "TPU"]
+    db = SessionLocal()
+    for name in std_types:
+        if not db.query(PlasticType).filter_by(name=name).first():
+            db.add(PlasticType(name=name))
+    db.commit()
+    db.close()
 
 def seed_data():
     db = SessionLocal()
@@ -27,7 +36,7 @@ def seed_data():
         for group_name in ["GroupA", "GroupB", "GroupC"]:
             group = db.query(Group).filter_by(name=group_name).first()
             if not group:
-                group = Group(name=group_name)
+                group = Group(name=group_name, is_active=1)
                 db.add(group)
                 db.commit()
                 db.refresh(group)
@@ -57,8 +66,9 @@ def seed_data():
         db.commit()
 
         # Катушки
+        pla_type = db.query(PlasticType).filter_by(name="PLA").first()
         for i, group in enumerate(groups.values(), 1):
-            spool = Spool(type="PLA", color=f"Color{i}", weight_total=1000, weight_remaining=900, qr_code_path="", group_id=group.id)
+            spool = Spool(plastic_type_id=pla_type.id, color=f"Color{i}", weight_total=1000, weight_remaining=900, qr_code_path="", group_id=group.id)
             db.add(spool)
             db.commit()
             db.refresh(spool)
@@ -82,4 +92,5 @@ def seed_data():
         db.close()
 
 if __name__ == "__main__":
+    ensure_standard_plastic_types()
     seed_data()

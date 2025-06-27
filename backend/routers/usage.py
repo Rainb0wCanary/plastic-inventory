@@ -6,12 +6,17 @@ from models import Spool, Usage, User
 from datetime import datetime 
 from fastapi.security import OAuth2PasswordBearer
 from jose import jwt, JWTError
+import os
+from dotenv import load_dotenv
 
 router = APIRouter()
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
-SECRET_KEY = "supersecretkey"
-ALGORITHM = "HS256"
+load_dotenv()
+SECRET_KEY = os.getenv("SECRET_KEY")
+ALGORITHM = os.getenv("ALGORITHM")
+if not SECRET_KEY or not ALGORITHM:
+    raise RuntimeError("SECRET_KEY и ALGORITHM должны быть заданы в .env")
 
 def get_db():
     db = SessionLocal()
@@ -98,6 +103,33 @@ def add_usage(usage: UsageCreate, db: Session = Depends(get_db), current_user: U
 def get_usages(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     is_admin = current_user.role and current_user.role.name == "admin"
     if is_admin:
-        return db.query(Usage).all()
+        usages = db.query(Usage).all()
     else:
-        return db.query(Usage).filter(Usage.group_id == current_user.group_id).all()
+        usages = db.query(Usage).filter(Usage.group_id == current_user.group_id).all()
+    # Фильтруем только те траты, у которых есть катушка и (если указан) проект
+    valid_usages = []
+    for u in usages:
+        if not u.spool:
+            continue
+        if u.project_id is not None and not u.project:
+            continue
+        valid_usages.append(u)
+    return valid_usages
+
+@router.delete("/{usage_id}", response_model=dict)
+def delete_usage(usage_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    usage = db.query(Usage).filter(Usage.id == usage_id).first()
+    if not usage:
+        raise HTTPException(status_code=404, detail="Трата не найдена")
+    # Проверка прав: админ — всё, пользователь — только своей группы
+    is_admin = current_user.role and current_user.role.name == "admin"
+    if not is_admin and usage.group_id != current_user.group_id:
+        raise HTTPException(status_code=403, detail="Нет доступа к удалению этой траты")
+    # Возврат пластика
+    spool = db.query(Spool).filter(Spool.id == usage.spool_id).first()
+    if spool:
+        spool.weight_remaining += usage.amount_used
+        db.commit()
+    db.delete(usage)
+    db.commit()
+    return {"ok": True}

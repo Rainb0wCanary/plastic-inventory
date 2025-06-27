@@ -12,8 +12,10 @@ from dotenv import load_dotenv
 
 load_dotenv()
 SECRET_KEY = os.getenv("SECRET_KEY")
-ALGORITHM = os.getenv("ALGORITHM", "HS256")
-ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", 30))
+ALGORITHM = os.getenv("ALGORITHM")
+ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES"))
+if not SECRET_KEY or not ALGORITHM or not ACCESS_TOKEN_EXPIRE_MINUTES:
+    raise RuntimeError("SECRET_KEY, ALGORITHM и ACCESS_TOKEN_EXPIRE_MINUTES должны быть заданы в .env")
 
 router = APIRouter()
 
@@ -79,7 +81,9 @@ def register(user: UserCreate, db: Session = Depends(get_db), current_user: User
     if current_user.role and current_user.role.name == "admin":
         pass  # админ может всё
     elif current_user.role and current_user.role.name == "moderator":
-        if role.name != "user":
+        # Модератор может создавать только пользователей с ролью 'user' и только в своей группе
+        role_obj = db.query(Role).filter(Role.id == user.role_id).first()
+        if not role_obj or role_obj.name != "user":
             raise HTTPException(status_code=403, detail="Модератор может создавать только пользователей с ролью 'user'")
         if user.group_id != current_user.group_id:
             raise HTTPException(status_code=403, detail="Модератор может создавать пользователей только в своей группе")
@@ -92,7 +96,7 @@ def register(user: UserCreate, db: Session = Depends(get_db), current_user: User
     db.add(db_user)
     db.commit()
     db.refresh(db_user)
-    access_token = create_access_token(data={"sub": db_user.username})
+    access_token = create_access_token(data={"sub": db_user.username, "role": role.name})
     return {"access_token": access_token, "token_type": "bearer"}
 
 @router.post("/login", response_model=Token)
@@ -100,5 +104,17 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depend
     db_user = db.query(User).filter(User.username == form_data.username, User.is_active == 1).first()
     if not db_user or not verify_password(form_data.password, db_user.hashed_password):
         raise HTTPException(status_code=401, detail="Неверные имя пользователя или пароль или пользователь заблокирован")
-    access_token = create_access_token(data={"sub": db_user.username})
+    # Получаем роль пользователя
+    role = db_user.role.name if db_user.role else "user"
+    access_token = create_access_token(data={"sub": db_user.username, "role": role})
     return {"access_token": access_token, "token_type": "bearer"}
+
+@router.get("/me")
+def get_me(current_user: User = Depends(get_current_user)):
+    # Возвращаем профиль пользователя с ролью и группой
+    return {
+        "id": current_user.id,
+        "username": current_user.username,
+        "role": {"id": current_user.role.id, "name": current_user.role.name} if current_user.role else None,
+        "group": {"id": current_user.group.id, "name": current_user.group.name} if current_user.group else None
+    }

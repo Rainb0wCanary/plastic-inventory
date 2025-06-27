@@ -14,6 +14,7 @@ class Group(Base):
     __tablename__ = "groups"
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, unique=True, index=True)
+    is_active = Column(Integer, default=1)  # 1 - активна, 0 - заблокирована
     users = relationship("User", back_populates="group")
 
 
@@ -43,13 +44,14 @@ class Spool(Base):
     __tablename__ = "spools"
 
     id = Column(Integer, primary_key=True, index=True)
-    type = Column(String)
+    plastic_type_id = Column(Integer, ForeignKey("plastic_types.id"))
     color = Column(String)
     weight_total = Column(Float)
     weight_remaining = Column(Float)
     qr_code_path = Column(String)
     group_id = Column(Integer, ForeignKey("groups.id"), nullable=True)  # Привязка к группе
 
+    plastic_type = relationship("PlasticType")
     usages = relationship("Usage", back_populates="spool")
 
 
@@ -67,3 +69,10 @@ class Usage(Base):
     spool = relationship("Spool", back_populates="usages")
     project = relationship("Project", back_populates="usages")
     group = relationship("Group")
+
+
+class PlasticType(Base):
+    __tablename__ = "plastic_types"
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, unique=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=True)  # null для стандартных, user_id для пользовательских

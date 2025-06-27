@@ -11,4 +11,5 @@ def generate_qr(data: str) -> str:
     qr = qrcode.make(data)
     qr.save(filepath)
 
-    return filepath
+    # Возвращаем путь для браузера
+    return f"/static/qr_codes/{filename}"

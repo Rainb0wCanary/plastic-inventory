@@ -7,6 +7,7 @@ from typing import Optional
 from fastapi import Request
 from fastapi.security import OAuth2PasswordBearer
 from jose import jwt, JWTError
+from fastapi import status
 
 router = APIRouter()
 
@@ -78,3 +79,31 @@ def create_user(user: UserCreate, current_user: User = Depends(get_current_user)
     db.commit()
     db.refresh(db_user)
     return {"id": db_user.id, "username": db_user.username, "role": db_user.role.value, "group_id": db_user.group_id}
+
+@router.put("/groups/{group_id}/block", status_code=status.HTTP_200_OK)
+def block_group(group_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_user_db)):
+    if current_user.role != UserRole.admin:
+        raise HTTPException(status_code=403, detail="Только админ может блокировать группы")
+    group = db.query(Group).filter(Group.id == group_id).first()
+    if not group:
+        raise HTTPException(status_code=404, detail="Группа не найдена")
+    group.is_active = 0
+    users = db.query(User).filter(User.group_id == group_id).all()
+    for u in users:
+        u.is_active = 0
+    db.commit()
+    return {"ok": True}
+
+@router.put("/groups/{group_id}/unblock", status_code=status.HTTP_200_OK)
+def unblock_group(group_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_user_db)):
+    if current_user.role != UserRole.admin:
+        raise HTTPException(status_code=403, detail="Только админ может разблокировать группы")
+    group = db.query(Group).filter(Group.id == group_id).first()
+    if not group:
+        raise HTTPException(status_code=404, detail="Группа не найдена")
+    group.is_active = 1
+    users = db.query(User).filter(User.group_id == group_id).all()
+    for u in users:
+        u.is_active = 1
+    db.commit()
+    return {"ok": True}
