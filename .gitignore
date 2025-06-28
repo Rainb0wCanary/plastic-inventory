@@ -8,6 +8,8 @@ __pycache__/
 *.sqlite3
 *.db
 
+
+
 # venv
 venv/
 .env/
@@ -32,3 +34,6 @@ alembic/versions/
 .DS_Store
 Thumbs.db
 PROJECT_DESCRIPTION_FOR_AI.md
+
+# Исключить QR-коды
+backend/static/qr_codes/
