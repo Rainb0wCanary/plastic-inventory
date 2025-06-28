@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import api from '../api/axios';
 import { fetchPlasticTypes } from '../api/plasticTypes';
-import { Box, Typography, Button, Table, TableBody, TableCell, TableHead, TableRow, Paper, Dialog, DialogTitle, DialogContent, TextField, DialogActions, Alert, MenuItem, Select, InputLabel, FormControl } from '@mui/material';
+import { Box, Typography, Button, Table, TableBody, TableCell, TableHead, TableRow, Paper, Dialog, DialogTitle, DialogContent, TextField, DialogActions, Alert, Autocomplete } from '@mui/material';
 
 export default function Usage() {
   const [usages, setUsages] = useState([]);
@@ -11,6 +11,7 @@ export default function Usage() {
   const [spools, setSpools] = useState([]);
   const [projects, setProjects] = useState([]);
   const [plasticTypes, setPlasticTypes] = useState([]);
+  const [confirmDialog, setConfirmDialog] = useState({ open: false, id: null });
 
   const fetchUsages = async () => {
     try {
@@ -44,6 +45,22 @@ export default function Usage() {
     }
   };
 
+  const handleDelete = (id) => {
+    setConfirmDialog({ open: true, id });
+  };
+  const confirmDelete = async () => {
+    setError('');
+    try {
+      await api.delete(`/usage/${confirmDialog.id}`);
+      setConfirmDialog({ open: false, id: null });
+      fetchUsages();
+    } catch {
+      setError('Ошибка удаления траты');
+      setConfirmDialog({ open: false, id: null });
+    }
+  };
+  const cancelDelete = () => setConfirmDialog({ open: false, id: null });
+
   return (
     <Box>
       <Typography variant="h5" mb={2}>Траты</Typography>
@@ -76,14 +93,9 @@ export default function Usage() {
                   <TableCell>{u.purpose}</TableCell>
                   <TableCell>{new Date(u.timestamp).toLocaleString()}</TableCell>
                   <TableCell>
-                    <Button color="error" size="small" onClick={async () => {
-                      try {
-                        await api.delete(`/usage/${u.id}`);
-                        fetchUsages();
-                      } catch {
-                        setError('Ошибка удаления траты');
-                      }
-                    }}>Удалить</Button>
+                    <Button color="error" size="small" onClick={() => handleDelete(u.id)}>
+                      Удалить
+                    </Button>
                   </TableCell>
                 </TableRow>
               );
@@ -94,44 +106,85 @@ export default function Usage() {
       <Dialog open={open} onClose={() => setOpen(false)}>
         <DialogTitle>Добавить трату</DialogTitle>
         <DialogContent>
-          <FormControl fullWidth margin="normal">
-            <InputLabel id="spool-select-label">Катушка</InputLabel>
-            <Select
-              labelId="spool-select-label"
-              value={form.spool_id}
-              label="Катушка"
-              onChange={e => setForm(f => ({ ...f, spool_id: e.target.value }))}
-            >
-              {spools.map(s => {
-                const plasticType = plasticTypes.find(t => t.id === s.plastic_type_id);
-                return (
-                  <MenuItem key={s.id} value={s.id}>
-                    {s.id} — {plasticType ? plasticType.name : '—'} {s.color}
-                  </MenuItem>
-                );
-              })}
-            </Select>
-          </FormControl>
-          <FormControl fullWidth margin="normal">
-            <InputLabel id="project-select-label">Проект</InputLabel>
-            <Select
-              labelId="project-select-label"
-              value={form.project_id}
-              label="Проект"
-              onChange={e => setForm(f => ({ ...f, project_id: e.target.value }))}
-            >
-              <MenuItem value="">Без проекта</MenuItem>
-              {projects.map(p => (
-                <MenuItem key={p.id} value={p.id}>{p.name}</MenuItem>
-              ))}
-            </Select>
-          </FormControl>
+          <Autocomplete
+            fullWidth
+            options={spools.map(s => {
+              const plasticType = plasticTypes.find(t => t.id === s.plastic_type_id);
+              return {
+                label: `${s.id} — ${plasticType ? plasticType.name : '—'} ${s.color}`,
+                id: s.id
+              };
+            })}
+            value={
+              form.spool_id
+                ? (() => {
+                    const s = spools.find(sp => sp.id === form.spool_id);
+                    if (!s) return '';
+                    const plasticType = plasticTypes.find(t => t.id === s.plastic_type_id);
+                    return `${s.id} — ${plasticType ? plasticType.name : '—'} ${s.color}`;
+                  })()
+                : ''
+            }
+            onInputChange={(e, newInput) => {
+              setForm(f => ({ ...f, spool_id: newInput }));
+            }}
+            onChange={(e, newValue) => {
+              if (typeof newValue === 'object' && newValue && newValue.id) {
+                setForm(f => ({ ...f, spool_id: newValue.id }));
+              } else if (typeof newValue === 'string') {
+                setForm(f => ({ ...f, spool_id: newValue }));
+              } else {
+                setForm(f => ({ ...f, spool_id: '' }));
+              }
+            }}
+            renderInput={params => (
+              <TextField {...params} label="Катушка" margin="normal" fullWidth />
+            )}
+            sx={{ mb: 2 }}
+          />
+          <Autocomplete
+            fullWidth
+            freeSolo
+            options={[{ label: 'Без проекта', id: '' }, ...projects.map(p => ({ label: p.name, id: p.id }))]}
+            value={
+              form.project_id
+                ? (projects.find(p => p.id === form.project_id)?.name || form.project_id)
+                : 'Без проекта'
+            }
+            onInputChange={(e, newInput) => {
+              setForm(f => ({ ...f, project_id: newInput }));
+            }}
+            onChange={(e, newValue) => {
+              if (typeof newValue === 'object' && newValue && typeof newValue.id !== 'undefined') {
+                setForm(f => ({ ...f, project_id: newValue.id }));
+              } else if (typeof newValue === 'string') {
+                setForm(f => ({ ...f, project_id: newValue }));
+              } else {
+                setForm(f => ({ ...f, project_id: '' }));
+              }
+            }}
+            renderInput={params => (
+              <TextField {...params} label="Проект" margin="normal" fullWidth />
+            )}
+            sx={{ mb: 2 }}
+          />
           <TextField label="Кол-во (г)" type="number" value={form.amount_used} onChange={e => setForm(f => ({ ...f, amount_used: e.target.value }))} fullWidth margin="normal" />
           <TextField label="Цель" value={form.purpose} onChange={e => setForm(f => ({ ...f, purpose: e.target.value }))} fullWidth margin="normal" />
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setOpen(false)}>Отмена</Button>
           <Button onClick={handleCreate} variant="contained">Создать</Button>
+        </DialogActions>
+      </Dialog>
+      {/* Диалог подтверждения удаления траты */}
+      <Dialog open={confirmDialog.open} onClose={cancelDelete}>
+        <DialogTitle>Подтвердите удаление</DialogTitle>
+        <DialogContent>
+          <Typography>Вы уверены, что хотите удалить трату #{confirmDialog.id}?</Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={cancelDelete}>Отмена</Button>
+          <Button onClick={confirmDelete} color="error" variant="contained">Удалить</Button>
         </DialogActions>
       </Dialog>
     </Box>

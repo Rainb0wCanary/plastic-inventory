@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import api from '../api/axios';
 import { fetchPlasticTypes, addPlasticType } from '../api/plasticTypes';
-import { Box, Typography, Button, Table, TableBody, TableCell, TableHead, TableRow, Paper, Dialog, DialogTitle, DialogContent, TextField, DialogActions, Alert, MenuItem, Select, InputLabel, FormControl, IconButton } from '@mui/material';
+import { Box, Typography, Button, Table, TableBody, TableCell, TableHead, TableRow, Paper, Dialog, DialogTitle, DialogContent, TextField, DialogActions, Alert, MenuItem, Select, InputLabel, FormControl, IconButton, Grid, Autocomplete } from '@mui/material';
 import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
 import FileDownload from 'js-file-download';
 
@@ -15,6 +15,11 @@ export default function Spools() {
   const [showAddType, setShowAddType] = useState(false);
   const [newType, setNewType] = useState('');
   const [selectedGroup, setSelectedGroup] = useState('all');
+  const [usageDialog, setUsageDialog] = useState({ open: false, spool: null });
+  const [usageForm, setUsageForm] = useState({ amount_used: '', purpose: '', project_id: '' });
+  const [usageError, setUsageError] = useState('');
+  const [projects, setProjects] = useState([]);
+  const [confirmDialog, setConfirmDialog] = useState({ open: false, id: null });
   const role = localStorage.getItem('role');
   const API_URL = "http://localhost:8000";
 
@@ -39,6 +44,9 @@ export default function Spools() {
   useEffect(() => {
     fetchSpools();
     fetchTypes();
+    api.get('/projects/')
+      .then(res => setProjects(res.data))
+      .catch(() => setProjects([]));
   }, []);
 
   useEffect(() => {
@@ -85,13 +93,20 @@ export default function Spools() {
 
   const handleDelete = async (id) => {
     setError('');
+    setConfirmDialog({ open: true, id });
+  };
+  const confirmDelete = async () => {
+    setError('');
     try {
-      await api.delete(`/spools/${id}`);
+      await api.delete(`/spools/${confirmDialog.id}`);
+      setConfirmDialog({ open: false, id: null });
       fetchSpools();
     } catch {
       setError('Ошибка удаления катушки');
+      setConfirmDialog({ open: false, id: null });
     }
   };
+  const cancelDelete = () => setConfirmDialog({ open: false, id: null });
 
   // Скачивание QR-кода через axios с токеном
   const handleDownloadQr = async (spoolId, fileName = 'qr_code.png') => {
@@ -102,6 +117,33 @@ export default function Spools() {
       FileDownload(response.data, fileName);
     } catch (e) {
       setError('Ошибка скачивания QR-кода');
+    }
+  };
+
+  // Быстрая трата пластика
+  const handleOpenUsage = (spool) => {
+    setUsageDialog({ open: true, spool });
+    setUsageForm({ amount_used: '', purpose: '', project_id: '' });
+    setUsageError('');
+  };
+  const handleCloseUsage = () => {
+    setUsageDialog({ open: false, spool: null });
+    setUsageForm({ amount_used: '', purpose: '', project_id: '' });
+    setUsageError('');
+  };
+  const handleUsage = async () => {
+    setUsageError('');
+    try {
+      await api.post('/usage/', {
+        spool_id: usageDialog.spool.id,
+        amount_used: Number(usageForm.amount_used),
+        purpose: usageForm.purpose,
+        project_id: usageForm.project_id || null,
+      });
+      handleCloseUsage();
+      fetchSpools();
+    } catch {
+      setUsageError('Ошибка траты пластика');
     }
   };
 
@@ -155,31 +197,48 @@ export default function Spools() {
                 {role === 'admin' && <TableCell>{groups.find(g => Number(g.id) === Number(spool.group_id))?.name || '—'}</TableCell>}
                 <TableCell>
                   {spool.qr_code_path ? (
-                    <>
+                    <Box display="flex" alignItems="center" gap={2}>
                       <img
                         src={API_URL + spool.qr_code_path}
                         alt={spool.qr_code_path}
                         width={80}
-                        style={{ border: '1px solid red', verticalAlign: 'middle' }}
+                        style={{ border: '1px solid red', verticalAlign: 'middle', maxWidth: '100%' }}
                       />
-                      <Button
-                        size="small"
-                        variant="outlined"
-                        sx={{ ml: 1 }}
-                        onClick={() => handleDownloadQr(spool.id, `spool_${spool.id}_qr.png`)}
-                      >
-                        Скачать
-                      </Button>
-                      <Button
-                        size="small"
-                        color="error"
-                        variant="outlined"
-                        sx={{ ml: 1 }}
-                        onClick={() => handleDelete(spool.id)}
-                      >
-                        Удалить
-                      </Button>
-                    </>
+                      <Grid container direction="column" spacing={1} sx={{ minWidth: 120 }}>
+                        <Grid item>
+                          <Button
+                            size="small"
+                            variant="outlined"
+                            fullWidth
+                            onClick={() => handleDownloadQr(spool.id, `spool_${spool.id}_qr.png`)}
+                          >
+                            Скачать
+                          </Button>
+                        </Grid>
+                        <Grid item>
+                          <Button
+                            size="small"
+                            color="error"
+                            variant="outlined"
+                            fullWidth
+                            onClick={() => handleDelete(spool.id)}
+                          >
+                            Удалить
+                          </Button>
+                        </Grid>
+                        <Grid item>
+                          <Button
+                            size="small"
+                            color="primary"
+                            variant="contained"
+                            fullWidth
+                            onClick={() => handleOpenUsage(spool)}
+                          >
+                            Потратить
+                          </Button>
+                        </Grid>
+                      </Grid>
+                    </Box>
                   ) : (
                     '—'
                   )}
@@ -189,23 +248,35 @@ export default function Spools() {
           </TableBody>
         </Table>
       </Paper>
-      <Dialog open={open} onClose={() => setOpen(false)}>
+      <Dialog open={open} onClose={() => setOpen(false)} fullWidth maxWidth="sm">
         <DialogTitle>Добавить катушку</DialogTitle>
         <DialogContent>
           <Box display="flex" alignItems="center" gap={1}>
-            <FormControl fullWidth margin="normal">
-              <InputLabel id="plastic-type-label">Тип пластика</InputLabel>
-              <Select
-                labelId="plastic-type-label"
-                value={form.plastic_type_id}
-                label="Тип пластика"
-                onChange={e => setForm(f => ({ ...f, plastic_type_id: e.target.value }))}
-              >
-                {plasticTypes.map(t => (
-                  <MenuItem key={t.id} value={t.id}>{t.name}</MenuItem>
-                ))}
-              </Select>
-            </FormControl>
+            <Autocomplete
+              freeSolo
+              options={plasticTypes.map(t => ({ label: t.name, id: t.id }))}
+              value={
+                form.plastic_type_id
+                  ? plasticTypes.find(t => t.id === form.plastic_type_id)?.name || ''
+                  : ''
+              }
+              onInputChange={(e, newInput) => {
+                setForm(f => ({ ...f, plastic_type_id: newInput }));
+              }}
+              onChange={(e, newValue) => {
+                if (typeof newValue === 'object' && newValue && newValue.id) {
+                  setForm(f => ({ ...f, plastic_type_id: newValue.id }));
+                } else if (typeof newValue === 'string') {
+                  setForm(f => ({ ...f, plastic_type_id: newValue }));
+                } else {
+                  setForm(f => ({ ...f, plastic_type_id: '' }));
+                }
+              }}
+              renderInput={(params) => (
+                <TextField {...params} label="Тип пластика" margin="normal" fullWidth />
+              )}
+              sx={{ flex: 1 }}
+            />
             <IconButton size="small" onClick={() => setShowAddType(true)} sx={{ mt: 2 }}>
               <AddCircleOutlineIcon />
             </IconButton>
@@ -226,24 +297,105 @@ export default function Spools() {
           <TextField label="Вес (г)" type="number" value={form.weight_total} onChange={e => setForm(f => ({ ...f, weight_total: e.target.value }))} fullWidth margin="normal" />
           <TextField label="Остаток (г)" type="number" value={form.weight_remaining} onChange={e => setForm(f => ({ ...f, weight_remaining: e.target.value }))} fullWidth margin="normal" helperText="Если не указано — будет равен весу" />
           {role === 'admin' && (
-            <FormControl fullWidth margin="normal">
-              <InputLabel id="group-select-label">Группа</InputLabel>
-              <Select
-                labelId="group-select-label"
-                value={form.group_id || ''}
-                label="Группа"
-                onChange={e => setForm(f => ({ ...f, group_id: e.target.value }))}
-              >
-                {groups.map(g => (
-                  <MenuItem key={g.id} value={g.id}>{g.name}</MenuItem>
-                ))}
-              </Select>
-            </FormControl>
+            <Autocomplete
+              freeSolo
+              options={groups.map(g => ({ label: g.name, id: g.id }))}
+              value={
+                form.group_id
+                  ? groups.find(g => g.id === form.group_id)?.name || ''
+                  : ''
+              }
+              onInputChange={(e, newInput) => {
+                setForm(f => ({ ...f, group_id: newInput }));
+              }}
+              onChange={(e, newValue) => {
+                if (typeof newValue === 'object' && newValue && newValue.id) {
+                  setForm(f => ({ ...f, group_id: newValue.id }));
+                } else if (typeof newValue === 'string') {
+                  setForm(f => ({ ...f, group_id: newValue }));
+                } else {
+                  setForm(f => ({ ...f, group_id: '' }));
+                }
+              }}
+              renderInput={(params) => (
+                <TextField {...params} label="Группа" margin="normal" fullWidth />
+              )}
+            />
           )}
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setOpen(false)}>Отмена</Button>
           <Button onClick={handleCreate} variant="contained">Создать</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Диалог быстрой траты пластика */}
+      <Dialog open={usageDialog.open} onClose={handleCloseUsage} fullWidth maxWidth="sm">
+        <DialogTitle>Потратить пластик</DialogTitle>
+        <DialogContent>
+          <Typography mb={1}>
+            Катушка #{usageDialog.spool?.id} — {plasticTypes.find(t => t.id === usageDialog.spool?.plastic_type_id)?.name || ''}, {usageDialog.spool?.color}
+          </Typography>
+          <TextField
+            label="Сколько потратить (г)"
+            type="number"
+            value={usageForm.amount_used}
+            onChange={e => setUsageForm(f => ({ ...f, amount_used: e.target.value }))}
+            fullWidth
+            margin="normal"
+          />
+          <Autocomplete
+            freeSolo
+            options={projects
+              .filter(p => usageDialog.spool && p.group_id === usageDialog.spool.group_id)
+              .map(p => ({ label: p.name, id: p.id }))}
+            value={
+              usageForm.project_id
+                ? projects.find(p => p.id === usageForm.project_id)?.name || ''
+                : ''
+            }
+            onInputChange={(e, newInput) => {
+              // Если пользователь вводит текст, сохраняем его как строку
+              setUsageForm(f => ({ ...f, project_id: newInput }));
+            }}
+            onChange={(e, newValue) => {
+              // Если выбрали из списка — сохраняем id, иначе текст
+              if (typeof newValue === 'object' && newValue && newValue.id) {
+                setUsageForm(f => ({ ...f, project_id: newValue.id }));
+              } else if (typeof newValue === 'string') {
+                setUsageForm(f => ({ ...f, project_id: newValue }));
+              } else {
+                setUsageForm(f => ({ ...f, project_id: '' }));
+              }
+            }}
+            renderInput={(params) => (
+              <TextField {...params} label="Проект" margin="normal" fullWidth />
+            )}
+          />
+          <TextField
+            label="Цель использования"
+            value={usageForm.purpose}
+            onChange={e => setUsageForm(f => ({ ...f, purpose: e.target.value }))}
+            fullWidth
+            margin="normal"
+          />
+          {usageError && <Alert severity="error">{usageError}</Alert>}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseUsage}>Отмена</Button>
+          <Button onClick={handleUsage} variant="contained">Потратить</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Диалог подтверждения удаления катушки */}
+      <Dialog open={confirmDialog.open} onClose={cancelDelete} fullWidth maxWidth="sm">
+        <DialogTitle>Подтвердите удаление</DialogTitle>
+        <DialogContent>
+          <Typography>Вы уверены, что хотите удалить катушку #{confirmDialog.id}?</Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={cancelDelete}>Отмена</Button>
+          <Button onClick={confirmDelete} color="error" variant="contained">Удалить</Button>
         </DialogActions>
       </Dialog>
     </Box>

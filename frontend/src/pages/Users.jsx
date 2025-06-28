@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import api from '../api/axios';
-import { Box, Typography, Table, TableBody, TableCell, TableHead, TableRow, Paper, Alert, Button, Dialog, DialogTitle, DialogContent, DialogActions, TextField, MenuItem, Select, InputLabel, FormControl } from '@mui/material';
+import { Box, Typography, Table, TableBody, TableCell, TableHead, TableRow, Paper, Alert, Button, Dialog, DialogTitle, DialogContent, DialogActions, TextField, Autocomplete } from '@mui/material';
 
 export default function Users() {
   const [users, setUsers] = useState([]);
@@ -9,6 +9,7 @@ export default function Users() {
   const [form, setForm] = useState({ username: '', password: '', role_id: '', group_id: '' });
   const [roles, setRoles] = useState([]);
   const [groups, setGroups] = useState([]);
+  const [confirmDialog, setConfirmDialog] = useState({ open: false, id: null });
   const role = localStorage.getItem('role');
 
   const fetchUsers = async () => {
@@ -61,6 +62,22 @@ export default function Users() {
     }
   };
 
+  const handleDelete = (id) => {
+    setConfirmDialog({ open: true, id });
+  };
+  const confirmDelete = async () => {
+    setError('');
+    try {
+      await api.delete(`/roles_groups/users/${confirmDialog.id}`);
+      setConfirmDialog({ open: false, id: null });
+      fetchUsers();
+    } catch {
+      setError('Ошибка удаления пользователя');
+      setConfirmDialog({ open: false, id: null });
+    }
+  };
+  const cancelDelete = () => setConfirmDialog({ open: false, id: null });
+
   return (
     <Box>
       <Typography variant="h5" mb={2}>Пользователи</Typography>
@@ -71,34 +88,58 @@ export default function Users() {
         <DialogContent>
           <TextField label="Имя пользователя" value={form.username} onChange={e => setForm(f => ({ ...f, username: e.target.value }))} fullWidth margin="normal" />
           <TextField label="Пароль" type="password" value={form.password} onChange={e => setForm(f => ({ ...f, password: e.target.value }))} fullWidth margin="normal" />
-          <FormControl fullWidth margin="normal">
-            <InputLabel id="role-select-label">Роль</InputLabel>
-            <Select
-              labelId="role-select-label"
-              value={form.role_id}
-              label="Роль"
-              onChange={e => setForm(f => ({ ...f, role_id: e.target.value }))}
-              disabled={role === 'moderator'}
-            >
-              {roles.map(r => (
-                <MenuItem key={r.id} value={r.id}>{r.name}</MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-          <FormControl fullWidth margin="normal">
-            <InputLabel id="group-select-label">Группа</InputLabel>
-            <Select
-              labelId="group-select-label"
-              value={form.group_id}
-              label="Группа"
-              onChange={e => setForm(f => ({ ...f, group_id: e.target.value }))}
-              disabled={role === 'moderator'}
-            >
-              {groups.map(g => (
-                <MenuItem key={g.id} value={g.id}>{g.name}</MenuItem>
-              ))}
-            </Select>
-          </FormControl>
+          <Autocomplete
+            fullWidth
+            options={roles.map(r => ({ label: r.name, id: r.id }))}
+            value={
+              form.role_id
+                ? (roles.find(r => r.id === form.role_id)?.name || form.role_id)
+                : ''
+            }
+            onInputChange={(e, newInput) => {
+              setForm(f => ({ ...f, role_id: newInput }));
+            }}
+            onChange={(e, newValue) => {
+              if (typeof newValue === 'object' && newValue && typeof newValue.id !== 'undefined') {
+                setForm(f => ({ ...f, role_id: newValue.id }));
+              } else if (typeof newValue === 'string') {
+                setForm(f => ({ ...f, role_id: newValue }));
+              } else {
+                setForm(f => ({ ...f, role_id: '' }));
+              }
+            }}
+            renderInput={params => (
+              <TextField {...params} label="Роль" margin="normal" fullWidth />
+            )}
+            disabled={role === 'moderator'}
+            sx={{ mb: 2 }}
+          />
+          <Autocomplete
+            fullWidth
+            options={groups.map(g => ({ label: g.name, id: g.id }))}
+            value={
+              form.group_id
+                ? (groups.find(g => g.id === form.group_id)?.name || form.group_id)
+                : ''
+            }
+            onInputChange={(e, newInput) => {
+              setForm(f => ({ ...f, group_id: newInput }));
+            }}
+            onChange={(e, newValue) => {
+              if (typeof newValue === 'object' && newValue && typeof newValue.id !== 'undefined') {
+                setForm(f => ({ ...f, group_id: newValue.id }));
+              } else if (typeof newValue === 'string') {
+                setForm(f => ({ ...f, group_id: newValue }));
+              } else {
+                setForm(f => ({ ...f, group_id: '' }));
+              }
+            }}
+            renderInput={params => (
+              <TextField {...params} label="Группа" margin="normal" fullWidth />
+            )}
+            disabled={role === 'moderator'}
+            sx={{ mb: 2 }}
+          />
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setOpen(false)}>Отмена</Button>
@@ -129,14 +170,9 @@ export default function Users() {
                       (role === 'admin' && !u.role && u.username !== localStorage.getItem('username'))
                     ) && (
                       <>
-                        <Button color="error" size="small" onClick={async () => {
-                          try {
-                            await api.delete(`/roles_groups/users/${u.id}`);
-                            fetchUsers();
-                          } catch {
-                            setError('Ошибка удаления пользователя');
-                          }
-                        }}>Удалить</Button>
+                        <Button color="error" size="small" onClick={() => handleDelete(u.id)}>
+                          Удалить
+                        </Button>
                         {u.is_active === 0 ? (
                           <Button color="success" size="small" onClick={async () => {
                             try {
@@ -160,14 +196,9 @@ export default function Users() {
                     )}
                     {role === 'moderator' && u.role && u.role.name === 'user' && u.username !== localStorage.getItem('username') && u.group && String(u.group.id) === String(form.group_id) && (
                       <>
-                        <Button color="error" size="small" onClick={async () => {
-                          try {
-                            await api.delete(`/roles_groups/users/${u.id}`);
-                            fetchUsers();
-                          } catch {
-                            setError('Ошибка удаления пользователя');
-                          }
-                        }}>Удалить</Button>
+                        <Button color="error" size="small" onClick={() => handleDelete(u.id)}>
+                          Удалить
+                        </Button>
                         {u.is_active === 0 ? (
                           <Button color="success" size="small" onClick={async () => {
                             try {
@@ -196,6 +227,17 @@ export default function Users() {
           </TableBody>
         </Table>
       </Paper>
+      {/* Диалог подтверждения удаления пользователя */}
+      <Dialog open={confirmDialog.open} onClose={cancelDelete}>
+        <DialogTitle>Подтвердите удаление</DialogTitle>
+        <DialogContent>
+          <Typography>Вы уверены, что хотите удалить пользователя #{confirmDialog.id}?</Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={cancelDelete}>Отмена</Button>
+          <Button onClick={confirmDelete} color="error" variant="contained">Удалить</Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }
