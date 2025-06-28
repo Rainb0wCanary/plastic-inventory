@@ -16,11 +16,16 @@ export default function Users() {
   const [search, setSearch] = useState('');
   const [sort, setSort] = useState({ field: '', direction: 'asc' });
   const [page, setPage] = useState(1);
+  const [selectedGroup, setSelectedGroup] = useState('all');
   const rowsPerPage = 10;
   const role = localStorage.getItem('role');
 
-  // Универсальный поиск по таблице пользователей
-  const searchedUsers = users.filter(u => {
+  // Универсальный поиск по таблице пользователей с учётом фильтра по группе
+  let filteredUsers = users;
+  if (role === 'admin' && selectedGroup !== 'all') {
+    filteredUsers = users.filter(u => u.group && String(u.group.id) === String(selectedGroup));
+  }
+  const searchedUsers = filteredUsers.filter(u => {
     const roleName = u.role?.name || '';
     const groupName = u.group?.name || '';
     const values = [
@@ -130,7 +135,7 @@ export default function Users() {
         Пользователи
       </Typography>
       <Grid container spacing={2} alignItems="center" mb={3}>
-        <Grid item xs={12} md={8}>
+        <Grid item xs={12} md={4}>
           <TextField
             label="Поиск по таблице"
             value={search}
@@ -139,6 +144,27 @@ export default function Users() {
             fullWidth
           />
         </Grid>
+        {role === 'admin' && (
+          <Grid item xs={12} md={4}>
+            <Autocomplete
+              size="small"
+              options={[{ label: 'Все группы', id: 'all' }, ...groups.map(g => ({ label: g.name, id: g.id }))]}
+              value={
+                selectedGroup === 'all'
+                  ? { label: 'Все группы', id: 'all' }
+                  : groups.find(g => String(g.id) === String(selectedGroup))
+                    ? { label: groups.find(g => String(g.id) === String(selectedGroup)).name, id: selectedGroup }
+                    : { label: 'Все группы', id: 'all' }
+              }
+              onChange={(_, newValue) => {
+                setSelectedGroup(newValue ? newValue.id : 'all');
+              }}
+              renderInput={params => <TextField {...params} label="Группа" fullWidth />}
+              isOptionEqualToValue={(option, value) => String(option.id) === String(value.id)}
+              sx={{ minWidth: 180, maxWidth: 240 }}
+            />
+          </Grid>
+        )}
         <Grid item xs={12} md={4}>
           <Button variant="contained" onClick={() => setOpen(true)} fullWidth>Добавить пользователя</Button>
         </Grid>

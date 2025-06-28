@@ -19,6 +19,8 @@ export default function Usage() {
   const [sort, setSort] = useState({ field: '', direction: 'asc' });
   const [page, setPage] = useState(1);
   const rowsPerPage = 10;
+  const [groups, setGroups] = useState([]);
+  const [selectedGroup, setSelectedGroup] = useState('all');
 
   const fetchUsages = async () => {
     try {
@@ -38,6 +40,7 @@ export default function Usage() {
       .then(res => setProjects(res.data))
       .catch(() => setProjects([]));
     fetchPlasticTypes().then(setPlasticTypes).catch(() => setPlasticTypes([]));
+    api.get('/groups/').then(res => setGroups(res.data)).catch(() => setGroups([]));
   }, []);
 
   const handleCreate = async () => {
@@ -69,18 +72,28 @@ export default function Usage() {
   };
   const cancelDelete = () => setConfirmDialog({ open: false, id: null, date: '' });
 
+  // Фильтрация трат по группе (только для админа)
+  let filteredUsages = usages;
+  if (localStorage.getItem('role') === 'admin' && selectedGroup !== 'all') {
+    filteredUsages = usages.filter(u => {
+      const project = projects.find(p => p.id === u.project_id);
+      return project && String(project.group_id) === String(selectedGroup);
+    });
+  }
   // Универсальный поиск по таблице трат
-  const searchedUsages = usages.filter(u => {
+  const searchedUsages = filteredUsages.filter(u => {
     const spool = spools.find(s => s.id === u.spool_id);
     const plasticType = plasticTypes.find(t => t.id === (spool ? spool.plastic_type_id : null));
     const project = projects.find(p => p.id === u.project_id);
+    const group = project ? groups.find(g => g.id === project.group_id)?.name || '' : '';
     const values = [
       String(u.id),
       spool && plasticType ? `${plasticType.name} ${spool.color}` : u.spool_id,
       project ? project.name : (u.project_id || ''),
       String(u.amount_used),
       u.purpose,
-      new Date(u.timestamp).toLocaleString()
+      new Date(u.timestamp).toLocaleString(),
+      group
     ].join(' ').toLowerCase();
     return values.includes(search.toLowerCase());
   });
@@ -105,7 +118,7 @@ export default function Usage() {
         Траты
       </Typography>
       <Grid container spacing={2} alignItems="center" mb={3}>
-        <Grid item xs={12} md={8}>
+        <Grid item xs={12} md={4}>
           <TextField
             label="Поиск по таблице"
             value={search}
@@ -114,6 +127,27 @@ export default function Usage() {
             fullWidth
           />
         </Grid>
+        {localStorage.getItem('role') === 'admin' && (
+          <Grid item xs={12} md={4}>
+            <Autocomplete
+              size="small"
+              options={[{ label: 'Все группы', id: 'all' }, ...groups.map(g => ({ label: g.name, id: g.id }))]}
+              value={
+                selectedGroup === 'all'
+                  ? { label: 'Все группы', id: 'all' }
+                  : groups.find(g => String(g.id) === String(selectedGroup))
+                    ? { label: groups.find(g => String(g.id) === String(selectedGroup)).name, id: selectedGroup }
+                    : { label: 'Все группы', id: 'all' }
+              }
+              onChange={(_, newValue) => {
+                setSelectedGroup(newValue ? newValue.id : 'all');
+              }}
+              renderInput={params => <TextField {...params} label="Группа" fullWidth />}
+              isOptionEqualToValue={(option, value) => String(option.id) === String(value.id)}
+              sx={{ minWidth: 180, maxWidth: 240 }}
+            />
+          </Grid>
+        )}
         <Grid item xs={12} md={4}>
           <Button variant="contained" onClick={() => setOpen(true)} fullWidth>Добавить трату</Button>
         </Grid>
@@ -135,6 +169,7 @@ export default function Usage() {
               </TableCell>
               <TableCell>Катушка</TableCell>
               <TableCell>Проект</TableCell>
+              {localStorage.getItem('role') === 'admin' && <TableCell>Группа</TableCell>}
               <TableCell>
                 <Box display="flex" alignItems="center">
                   Кол-во (г)
@@ -164,11 +199,13 @@ export default function Usage() {
               const spool = spools.find(s => s.id === u.spool_id);
               const plasticType = plasticTypes.find(t => t.id === (spool ? spool.plastic_type_id : null));
               const project = projects.find(p => p.id === u.project_id);
+              const group = project ? groups.find(g => g.id === project.group_id)?.name || '—' : '—';
               return (
                 <TableRow key={u.id}>
                   <TableCell>{u.id}</TableCell>
                   <TableCell>{spool && plasticType ? `${plasticType.name} ${spool.color}` : u.spool_id}</TableCell>
                   <TableCell>{project ? project.name : (u.project_id || '—')}</TableCell>
+                  {localStorage.getItem('role') === 'admin' && <TableCell>{group}</TableCell>}
                   <TableCell>{u.amount_used}</TableCell>
                   <TableCell>{u.purpose}</TableCell>
                   <TableCell>{new Date(u.timestamp).toLocaleString()}</TableCell>

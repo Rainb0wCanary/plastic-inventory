@@ -15,6 +15,7 @@ export default function Projects() {
   const [search, setSearch] = useState('');
   const [sort, setSort] = useState({ field: '', direction: 'asc' });
   const [page, setPage] = useState(1);
+  const [selectedGroup, setSelectedGroup] = useState('all');
   const rowsPerPage = 10;
   const role = localStorage.getItem('role');
 
@@ -79,8 +80,13 @@ export default function Projects() {
   };
   const cancelDelete = () => setConfirmDialog({ open: false, id: null, name: '' });
 
+  // Фильтрация проектов по группе (только для админа)
+  let filteredProjects = projects;
+  if (role === 'admin' && selectedGroup !== 'all') {
+    filteredProjects = projects.filter(p => String(p.group_id) === String(selectedGroup));
+  }
   // Универсальный поиск по таблице проектов
-  const searchedProjects = projects.filter(p => {
+  const searchedProjects = filteredProjects.filter(p => {
     const group = groups.find(g => g.id === p.group_id)?.name || '';
     const values = [
       String(p.id),
@@ -107,7 +113,7 @@ export default function Projects() {
         Проекты
       </Typography>
       <Grid container spacing={2} alignItems="center" mb={3}>
-        <Grid item xs={12} md={8}>
+        <Grid item xs={12} md={4}>
           <TextField
             label="Поиск по таблице"
             value={search}
@@ -116,6 +122,27 @@ export default function Projects() {
             fullWidth
           />
         </Grid>
+        {role === 'admin' && (
+          <Grid item xs={12} md={4}>
+            <Autocomplete
+              size="small"
+              options={[{ label: 'Все группы', id: 'all' }, ...groups.map(g => ({ label: g.name, id: g.id }))]}
+              value={
+                selectedGroup === 'all'
+                  ? { label: 'Все группы', id: 'all' }
+                  : groups.find(g => String(g.id) === String(selectedGroup))
+                    ? { label: groups.find(g => String(g.id) === String(selectedGroup)).name, id: selectedGroup }
+                    : { label: 'Все группы', id: 'all' }
+              }
+              onChange={(_, newValue) => {
+                setSelectedGroup(newValue ? newValue.id : 'all');
+              }}
+              renderInput={params => <TextField {...params} label="Группа" fullWidth />}
+              isOptionEqualToValue={(option, value) => String(option.id) === String(value.id)}
+              sx={{ minWidth: 180, maxWidth: 240 }}
+            />
+          </Grid>
+        )}
         <Grid item xs={12} md={4}>
           <Button variant="contained" onClick={() => setOpen(true)} fullWidth>Добавить проект</Button>
         </Grid>
@@ -137,6 +164,7 @@ export default function Projects() {
               </TableCell>
               <TableCell>Название</TableCell>
               <TableCell>Описание</TableCell>
+              {role === 'admin' && <TableCell>Группа</TableCell>}
               {(role === 'admin' || role === 'moderator') && <TableCell>Действия</TableCell>}
             </TableRow>
           </TableHead>
@@ -146,6 +174,7 @@ export default function Projects() {
                 <TableCell>{p.id}</TableCell>
                 <TableCell>{p.name}</TableCell>
                 <TableCell>{p.description}</TableCell>
+                {role === 'admin' && <TableCell>{groups.find(g => g.id === p.group_id)?.name || '—'}</TableCell>}
                 {(role === 'admin' || (role === 'moderator' && String(p.group_id) === String(localStorage.getItem('group_id')))) && (
                   <TableCell>
                     <Button color="error" size="small" onClick={() => handleDelete(p.id)}>
