@@ -46,6 +46,14 @@ def seed_data():
             {"username": "moderator", "password": "modpass", "role": roles["moderator"], "group": groups["GroupB"]},
             {"username": "user", "password": "userpass", "role": roles["user"], "group": groups["GroupC"]},
         ]
+        # Добавим много обычных пользователей
+        for i in range(1, 51):
+            users.append({
+                "username": f"user{i}",
+                "password": f"pass{i}",
+                "role": roles["user"],
+                "group": groups["GroupA" if i % 3 == 1 else "GroupB" if i % 3 == 2 else "GroupC"]
+            })
         for u in users:
             if not db.query(User).filter_by(username=u["username"]).first():
                 user = User(
@@ -59,28 +67,31 @@ def seed_data():
 
         # Проекты
         for i, group in enumerate(groups.values(), 1):
-            project = Project(name=f"Project{i}", description=f"Test project {i}", group_id=group.id)
-            db.add(project)
+            for j in range(1, 11):
+                project = Project(name=f"Project{i}_{j}", description=f"Test project {i}_{j}", group_id=group.id)
+                db.add(project)
         db.commit()
 
         # Катушки (используем первый стандартный тип пластика)
         plastic_type = db.query(PlasticType).filter_by(name="PLA").first()
         for i, group in enumerate(groups.values(), 1):
-            spool = Spool(plastic_type_id=plastic_type.id, color=f"Color{i}", weight_total=1000, weight_remaining=900, qr_code_path="", group_id=group.id)
-            db.add(spool)
-            db.commit()
-            db.refresh(spool)
-            # Генерация QR-кода после получения id
-            qr_path = generate_qr(str(spool.id))
-            spool.qr_code_path = qr_path
-            db.commit()
+            for j in range(1, 21):
+                spool = Spool(plastic_type_id=plastic_type.id, color=f"Color{i}_{j}", weight_total=1000+j*10, weight_remaining=900-j*5, qr_code_path="", group_id=group.id)
+                db.add(spool)
+                db.commit()
+                db.refresh(spool)
+                # Генерация QR-кода после получения id
+                qr_path = generate_qr(str(spool.id))
+                spool.qr_code_path = qr_path
+                db.commit()
 
         # Usage
         spools = db.query(Spool).all()
         projects = db.query(Project).all()
         for i, (spool, project) in enumerate(zip(spools, projects), 1):
-            usage = Usage(spool_id=spool.id, amount_used=100, purpose=f"Test usage {i}", project_id=project.id, group_id=spool.group_id, timestamp=datetime.utcnow())
-            db.add(usage)
+            for k in range(1, 6):
+                usage = Usage(spool_id=spool.id, amount_used=100+k, purpose=f"Test usage {i}_{k}", project_id=project.id, group_id=spool.group_id, timestamp=datetime.utcnow())
+                db.add(usage)
         db.commit()
         print("Тестовые данные успешно добавлены!")
     except IntegrityError:

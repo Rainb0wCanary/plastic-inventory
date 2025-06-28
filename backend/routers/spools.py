@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
 from database import SessionLocal
-from models import Spool, User, PlasticType
+from models import Spool, User, PlasticType, Group
 from pydantic import BaseModel
 from utils.qr_generator import generate_qr
 from fastapi.security import OAuth2PasswordBearer
@@ -58,6 +58,11 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
     user = db.query(User).filter(User.username == username).first()
     if user is None:
         raise HTTPException(status_code=401, detail="Пользователь не найден")
+    # Проверка: если у пользователя есть группа и она заблокирована
+    if user.group_id is not None:
+        group = db.query(Group).filter(Group.id == user.group_id).first()
+        if group and getattr(group, 'is_active', 1) == 0:
+            raise HTTPException(status_code=403, detail="Ваша группа заблокирована. Обратитесь к администратору.")
     return user
 
 # ➕ POST /spools
@@ -98,10 +103,13 @@ def get_spools(db: Session = Depends(get_db), current_user: User = Depends(get_c
         return db.query(Spool).filter(Spool.group_id == current_user.group_id).all()
 
 @router.get("/{spool_id}/download_qr")
-def download_qr(spool_id: int, db: Session = Depends(get_db)):
+def download_qr(spool_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     spool = db.query(Spool).get(spool_id)
     if not spool or not spool.qr_code_path:
         raise HTTPException(status_code=404, detail="QR not found")
+    is_admin = current_user.role and current_user.role.name == "admin"
+    if not is_admin and spool.group_id != current_user.group_id:
+        raise HTTPException(status_code=403, detail="Нет доступа к этому QR-коду")
     file_path = spool.qr_code_path.lstrip("/")
     return FileResponse(
         file_path,
@@ -130,7 +138,7 @@ def delete_spool(spool_id: int, db: Session = Depends(get_db), current_user: Use
 
 # Получить все типы пластика (для фронта)
 @router.get("/types", response_model=list[dict])
-def get_types(db: Session = Depends(get_db)):
+def get_types(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     types = db.query(PlasticType).all()
     return [{"id": t.id, "name": t.name} for t in types]
 

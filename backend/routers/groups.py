@@ -49,6 +49,11 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
     user = db.query(User).filter(User.username == username).first()
     if user is None:
         raise HTTPException(status_code=401, detail="Пользователь не найден")
+    # Проверка: если у пользователя есть группа и она заблокирована
+    if user.group_id is not None:
+        group = db.query(Group).filter(Group.id == user.group_id).first()
+        if group and getattr(group, 'is_active', 1) == 0:
+            raise HTTPException(status_code=403, detail="Ваша группа заблокирована. Обратитесь к администратору.")
     return user
 
 @router.post("/groups/", response_model=dict)

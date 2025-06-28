@@ -3,6 +3,7 @@ import api from '../api/axios';
 import { fetchPlasticTypes, addPlasticType } from '../api/plasticTypes';
 import { Box, Typography, Button, Table, TableBody, TableCell, TableHead, TableRow, Paper, Dialog, DialogTitle, DialogContent, TextField, DialogActions, Alert, MenuItem, Select, InputLabel, FormControl, IconButton } from '@mui/material';
 import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
+import FileDownload from 'js-file-download';
 
 export default function Spools() {
   const [spools, setSpools] = useState([]);
@@ -92,6 +93,18 @@ export default function Spools() {
     }
   };
 
+  // Скачивание QR-кода через axios с токеном
+  const handleDownloadQr = async (spoolId, fileName = 'qr_code.png') => {
+    try {
+      const response = await api.get(`/spools/${spoolId}/download_qr`, {
+        responseType: 'blob',
+      });
+      FileDownload(response.data, fileName);
+    } catch (e) {
+      setError('Ошибка скачивания QR-кода');
+    }
+  };
+
   // Фильтрация катушек по группе (только для админа)
   const filteredSpools = role === 'admin' && selectedGroup !== 'all'
     ? spools.filter(s => s.group_id === Number(selectedGroup))
@@ -149,15 +162,14 @@ export default function Spools() {
                         width={80}
                         style={{ border: '1px solid red', verticalAlign: 'middle' }}
                       />
-                      <a href={`${API_URL}/spools/${spool.id}/download_qr`}>
-                        <Button
-                          size="small"
-                          variant="outlined"
-                          sx={{ ml: 1 }}
-                        >
-                          Скачать
-                        </Button>
-                      </a>
+                      <Button
+                        size="small"
+                        variant="outlined"
+                        sx={{ ml: 1 }}
+                        onClick={() => handleDownloadQr(spool.id, `spool_${spool.id}_qr.png`)}
+                      >
+                        Скачать
+                      </Button>
                       <Button
                         size="small"
                         color="error"

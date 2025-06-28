@@ -41,6 +41,11 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
         raise HTTPException(status_code=401, detail="Пользователь не найден или заблокирован")
     if not user.role:
         raise HTTPException(status_code=403, detail="У пользователя не назначена роль")
+    # Проверка: если у пользователя есть группа и она заблокирована
+    if user.group_id is not None:
+        group = db.query(Group).filter(Group.id == user.group_id).first()
+        if group and getattr(group, 'is_active', 1) == 0:
+            raise HTTPException(status_code=403, detail="Ваша группа заблокирована. Обратитесь к администратору.")
     return user
 
 def admin_required(current_user: User = Depends(get_current_user)):
@@ -102,6 +107,9 @@ def delete_group(group_id: int, db: Session = Depends(get_db), current_user: Use
     group = db.query(Group).filter(Group.id == group_id).first()
     if not group:
         raise HTTPException(status_code=404, detail="Группа не найдена")
+    # Запретить удалять свою группу
+    if current_user.group_id == group_id:
+        raise HTTPException(status_code=403, detail="Нельзя удалить свою собственную группу")
     db.delete(group)
     db.commit()
     return {"ok": True}
@@ -111,6 +119,9 @@ def block_group(group_id: int, db: Session = Depends(get_db), current_user: User
     group = db.query(Group).filter(Group.id == group_id).first()
     if not group:
         raise HTTPException(status_code=404, detail="Группа не найдена")
+    # Запретить блокировать свою группу
+    if current_user.group_id == group_id:
+        raise HTTPException(status_code=403, detail="Нельзя блокировать свою собственную группу")
     # Проверка: есть ли в группе админ
     admins = db.query(User).join(Role).filter(User.group_id == group_id, Role.name == "admin").all()
     if admins:

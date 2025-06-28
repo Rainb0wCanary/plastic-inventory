@@ -24,7 +24,7 @@ export default function Groups() {
   const handleCreateGroup = async () => {
     setError('');
     try {
-      await api.post('/groups/', { name: groupName });
+      await api.post('/roles_groups/groups/', { name: groupName });
       setOpenGroup(false);
       setGroupName('');
       fetchGroups();
@@ -36,7 +36,7 @@ export default function Groups() {
   const handleDeleteGroup = async (id) => {
     setError('');
     try {
-      await api.delete(`/groups/${id}`);
+      await api.delete(`/roles_groups/groups/${id}`);
       fetchGroups();
     } catch {
       setError('Ошибка удаления группы');
@@ -45,7 +45,7 @@ export default function Groups() {
   const handleBlockGroup = async (id) => {
     setError('');
     try {
-      await api.put(`/groups/${id}/block`);
+      await api.put(`/roles_groups/groups/${id}/block`);
       fetchGroups();
     } catch {
       setError('Ошибка блокировки группы');
@@ -54,7 +54,7 @@ export default function Groups() {
   const handleUnblockGroup = async (id) => {
     setError('');
     try {
-      await api.put(`/groups/${id}/unblock`);
+      await api.put(`/roles_groups/groups/${id}/unblock`);
       fetchGroups();
     } catch {
       setError('Ошибка разблокировки группы');
