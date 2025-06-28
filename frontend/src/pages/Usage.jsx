@@ -1,7 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import api from '../api/axios';
 import { fetchPlasticTypes } from '../api/plasticTypes';
-import { Box, Typography, Button, Table, TableBody, TableCell, TableHead, TableRow, Paper, Dialog, DialogTitle, DialogContent, TextField, DialogActions, Alert, Autocomplete } from '@mui/material';
+import { Box, Typography, Button, Table, TableBody, TableCell, TableHead, TableRow, Paper, Dialog, DialogTitle, DialogContent, TextField, DialogActions, Alert, Autocomplete, Grid, IconButton } from '@mui/material';
+import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
+import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward';
+import Pagination from '@mui/material/Pagination';
 
 export default function Usage() {
   const [usages, setUsages] = useState([]);
@@ -12,6 +15,10 @@ export default function Usage() {
   const [projects, setProjects] = useState([]);
   const [plasticTypes, setPlasticTypes] = useState([]);
   const [confirmDialog, setConfirmDialog] = useState({ open: false, id: null });
+  const [search, setSearch] = useState('');
+  const [sort, setSort] = useState({ field: '', direction: 'asc' });
+  const [page, setPage] = useState(1);
+  const rowsPerPage = 10;
 
   const fetchUsages = async () => {
     try {
@@ -46,41 +53,114 @@ export default function Usage() {
   };
 
   const handleDelete = (id) => {
-    setConfirmDialog({ open: true, id });
+    const usage = usages.find(u => u.id === id);
+    setConfirmDialog({ open: true, id, date: usage ? new Date(usage.timestamp).toLocaleString() : '' });
   };
   const confirmDelete = async () => {
     setError('');
     try {
       await api.delete(`/usage/${confirmDialog.id}`);
-      setConfirmDialog({ open: false, id: null });
+      setConfirmDialog({ open: false, id: null, date: '' });
       fetchUsages();
     } catch {
       setError('Ошибка удаления траты');
-      setConfirmDialog({ open: false, id: null });
+      setConfirmDialog({ open: false, id: null, date: '' });
     }
   };
-  const cancelDelete = () => setConfirmDialog({ open: false, id: null });
+  const cancelDelete = () => setConfirmDialog({ open: false, id: null, date: '' });
+
+  // Универсальный поиск по таблице трат
+  const searchedUsages = usages.filter(u => {
+    const spool = spools.find(s => s.id === u.spool_id);
+    const plasticType = plasticTypes.find(t => t.id === (spool ? spool.plastic_type_id : null));
+    const project = projects.find(p => p.id === u.project_id);
+    const values = [
+      String(u.id),
+      spool && plasticType ? `${plasticType.name} ${spool.color}` : u.spool_id,
+      project ? project.name : (u.project_id || ''),
+      String(u.amount_used),
+      u.purpose,
+      new Date(u.timestamp).toLocaleString()
+    ].join(' ').toLowerCase();
+    return values.includes(search.toLowerCase());
+  });
+
+  // Сортировка
+  const sortedUsages = [...searchedUsages].sort((a, b) => {
+    if (!sort.field) return 0;
+    const dir = sort.direction === 'asc' ? 1 : -1;
+    if (sort.field === 'timestamp') {
+      // Сортировка по дате
+      return (new Date(a.timestamp) - new Date(b.timestamp)) * dir;
+    }
+    return (a[sort.field] - b[sort.field]) * dir;
+  });
+
+  const pagedUsages = sortedUsages.slice((page - 1) * rowsPerPage, page * rowsPerPage);
+  const pageCount = Math.ceil(sortedUsages.length / rowsPerPage);
 
   return (
     <Box>
-      <Typography variant="h5" mb={2}>Траты</Typography>
-      <Button variant="contained" onClick={() => setOpen(true)} sx={{ mb: 2 }}>Добавить трату</Button>
+      <Typography variant="h5" align="center" sx={{ mt: 3, mb: 3, fontWeight: 600 }}>
+        Траты
+      </Typography>
+      <Grid container spacing={2} alignItems="center" mb={3}>
+        <Grid item xs={12} md={8}>
+          <TextField
+            label="Поиск по таблице"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            size="small"
+            fullWidth
+          />
+        </Grid>
+        <Grid item xs={12} md={4}>
+          <Button variant="contained" onClick={() => setOpen(true)} fullWidth>Добавить трату</Button>
+        </Grid>
+      </Grid>
       {error && <Alert severity="error">{error}</Alert>}
-      <Paper>
+      <Paper sx={{ mt: 2, mb: 3 }}>
         <Table>
           <TableHead>
             <TableRow>
-              <TableCell>ID</TableCell>
+              <TableCell>
+                <Box display="flex" alignItems="center">
+                  ID
+                  <IconButton size="small" onClick={() => setSort(s => ({ field: 'id', direction: s.field === 'id' && s.direction === 'asc' ? 'desc' : 'asc' }))}>
+                    {sort.field === 'id' ? (
+                      sort.direction === 'asc' ? <ArrowUpwardIcon fontSize="inherit" /> : <ArrowDownwardIcon fontSize="inherit" />
+                    ) : <ArrowUpwardIcon fontSize="inherit" sx={{ opacity: 0.3 }} />}
+                  </IconButton>
+                </Box>
+              </TableCell>
               <TableCell>Катушка</TableCell>
               <TableCell>Проект</TableCell>
-              <TableCell>Кол-во (г)</TableCell>
+              <TableCell>
+                <Box display="flex" alignItems="center">
+                  Кол-во (г)
+                  <IconButton size="small" onClick={() => setSort(s => ({ field: 'amount_used', direction: s.field === 'amount_used' && s.direction === 'asc' ? 'desc' : 'asc' }))}>
+                    {sort.field === 'amount_used' ? (
+                      sort.direction === 'asc' ? <ArrowUpwardIcon fontSize="inherit" /> : <ArrowDownwardIcon fontSize="inherit" />
+                    ) : <ArrowUpwardIcon fontSize="inherit" sx={{ opacity: 0.3 }} />}
+                  </IconButton>
+                </Box>
+              </TableCell>
               <TableCell>Цель</TableCell>
-              <TableCell>Дата</TableCell>
+              <TableCell>
+                <Box display="flex" alignItems="center">
+                  Дата
+                  <IconButton size="small" onClick={() => setSort(s => ({ field: 'timestamp', direction: s.field === 'timestamp' && s.direction === 'asc' ? 'desc' : 'asc' }))}>
+                    {sort.field === 'timestamp' ? (
+                      sort.direction === 'asc' ? <ArrowUpwardIcon fontSize="inherit" /> : <ArrowDownwardIcon fontSize="inherit" />
+                    ) : <ArrowUpwardIcon fontSize="inherit" sx={{ opacity: 0.3 }} />}
+                  </IconButton>
+                </Box>
+              </TableCell>
               <TableCell>Действия</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
-            {usages.map(u => {
+            {pagedUsages.map(u => {
               const spool = spools.find(s => s.id === u.spool_id);
               const plasticType = plasticTypes.find(t => t.id === (spool ? spool.plastic_type_id : null));
               const project = projects.find(p => p.id === u.project_id);
@@ -102,6 +182,17 @@ export default function Usage() {
             })}
           </TableBody>
         </Table>
+        <Box display="flex" justifyContent="center" my={2}>
+          <Pagination
+            count={pageCount}
+            page={page}
+            onChange={(_, value) => setPage(value)}
+            color="primary"
+            shape="rounded"
+            showFirstButton
+            showLastButton
+          />
+        </Box>
       </Paper>
       <Dialog open={open} onClose={() => setOpen(false)}>
         <DialogTitle>Добавить трату</DialogTitle>
@@ -180,7 +271,7 @@ export default function Usage() {
       <Dialog open={confirmDialog.open} onClose={cancelDelete}>
         <DialogTitle>Подтвердите удаление</DialogTitle>
         <DialogContent>
-          <Typography>Вы уверены, что хотите удалить трату #{confirmDialog.id}?</Typography>
+          <Typography>Вы уверены, что хотите удалить трату #{confirmDialog.id} за "{confirmDialog.date}"?</Typography>
         </DialogContent>
         <DialogActions>
           <Button onClick={cancelDelete}>Отмена</Button>

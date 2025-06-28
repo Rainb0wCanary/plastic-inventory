@@ -1,6 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import api from '../api/axios';
-import { Box, Typography, Button, Table, TableBody, TableCell, TableHead, TableRow, Paper, Dialog, DialogTitle, DialogContent, TextField, DialogActions, Alert, Autocomplete } from '@mui/material';
+import { Box, Typography, Button, Table, TableBody, TableCell, TableHead, TableRow, Paper, Dialog, DialogTitle, DialogContent, TextField, DialogActions, Alert, Autocomplete, Grid, IconButton } from '@mui/material';
+import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
+import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward';
+import Pagination from '@mui/material/Pagination';
 
 export default function Projects() {
   const [projects, setProjects] = useState([]);
@@ -8,15 +11,21 @@ export default function Projects() {
   const [form, setForm] = useState({ name: '', description: '', group_id: '' });
   const [error, setError] = useState('');
   const [groups, setGroups] = useState([]);
-  const [confirmDialog, setConfirmDialog] = useState({ open: false, id: null });
+  const [confirmDialog, setConfirmDialog] = useState({ open: false, id: null, name: '' });
+  const [search, setSearch] = useState('');
+  const [sort, setSort] = useState({ field: '', direction: 'asc' });
+  const [page, setPage] = useState(1);
+  const rowsPerPage = 10;
   const role = localStorage.getItem('role');
 
   const fetchProjects = async () => {
     try {
       const res = await api.get('/projects/');
+      console.log('PROJECTS API DATA:', res.data); // Диагностика
       setProjects(res.data);
-    } catch {
+    } catch (e) {
       setError('Ошибка загрузки проектов');
+      console.error('PROJECTS API ERROR:', e); // Диагностика
     }
   };
 
@@ -24,8 +33,14 @@ export default function Projects() {
   useEffect(() => {
     if (role === 'admin') {
       api.get('/groups/')
-        .then(res => setGroups(res.data))
-        .catch(() => setGroups([]));
+        .then(res => {
+          setGroups(res.data);
+          console.log('GROUPS API DATA:', res.data); // Диагностика
+        })
+        .catch((e) => {
+          setGroups([]);
+          console.error('GROUPS API ERROR:', e); // Диагностика
+        });
     }
   }, [role]);
 
@@ -48,38 +63,85 @@ export default function Projects() {
   };
 
   const handleDelete = (id) => {
-    setConfirmDialog({ open: true, id });
+    const project = projects.find(p => p.id === id);
+    setConfirmDialog({ open: true, id, name: project ? project.name : '' });
   };
   const confirmDelete = async () => {
     setError('');
     try {
       await api.delete(`/projects/${confirmDialog.id}`);
-      setConfirmDialog({ open: false, id: null });
+      setConfirmDialog({ open: false, id: null, name: '' });
       fetchProjects();
     } catch {
       setError('Ошибка удаления проекта');
-      setConfirmDialog({ open: false, id: null });
+      setConfirmDialog({ open: false, id: null, name: '' });
     }
   };
-  const cancelDelete = () => setConfirmDialog({ open: false, id: null });
+  const cancelDelete = () => setConfirmDialog({ open: false, id: null, name: '' });
+
+  // Универсальный поиск по таблице проектов
+  const searchedProjects = projects.filter(p => {
+    const group = groups.find(g => g.id === p.group_id)?.name || '';
+    const values = [
+      String(p.id),
+      p.name,
+      p.description,
+      group
+    ].join(' ').toLowerCase();
+    return values.includes(search.toLowerCase());
+  });
+
+  // Сортировка
+  const sortedProjects = [...searchedProjects].sort((a, b) => {
+    if (!sort.field) return 0;
+    const dir = sort.direction === 'asc' ? 1 : -1;
+    return (a[sort.field] - b[sort.field]) * dir;
+  });
+
+  const pagedProjects = sortedProjects.slice((page - 1) * rowsPerPage, page * rowsPerPage);
+  const pageCount = Math.ceil(sortedProjects.length / rowsPerPage);
 
   return (
     <Box>
-      <Typography variant="h5" mb={2}>Проекты</Typography>
-      <Button variant="contained" onClick={() => setOpen(true)} sx={{ mb: 2 }}>Добавить проект</Button>
+      <Typography variant="h5" align="center" sx={{ mt: 3, mb: 3, fontWeight: 600 }}>
+        Проекты
+      </Typography>
+      <Grid container spacing={2} alignItems="center" mb={3}>
+        <Grid item xs={12} md={8}>
+          <TextField
+            label="Поиск по таблице"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            size="small"
+            fullWidth
+          />
+        </Grid>
+        <Grid item xs={12} md={4}>
+          <Button variant="contained" onClick={() => setOpen(true)} fullWidth>Добавить проект</Button>
+        </Grid>
+      </Grid>
       {error && <Alert severity="error">{error}</Alert>}
-      <Paper>
+      <Paper sx={{ mt: 2, mb: 3 }}>
         <Table>
           <TableHead>
             <TableRow>
-              <TableCell>ID</TableCell>
+              <TableCell>
+                <Box display="flex" alignItems="center">
+                  ID
+                  <IconButton size="small" onClick={() => setSort(s => ({ field: 'id', direction: s.field === 'id' && s.direction === 'asc' ? 'desc' : 'asc' }))}>
+                    {sort.field === 'id' ? (
+                      sort.direction === 'asc' ? <ArrowUpwardIcon fontSize="inherit" /> : <ArrowDownwardIcon fontSize="inherit" />
+                    ) : <ArrowUpwardIcon fontSize="inherit" sx={{ opacity: 0.3 }} />}
+                  </IconButton>
+                </Box>
+              </TableCell>
               <TableCell>Название</TableCell>
               <TableCell>Описание</TableCell>
               {(role === 'admin' || role === 'moderator') && <TableCell>Действия</TableCell>}
             </TableRow>
           </TableHead>
           <TableBody>
-            {projects.map(p => (
+            {pagedProjects.map(p => (
               <TableRow key={p.id}>
                 <TableCell>{p.id}</TableCell>
                 <TableCell>{p.name}</TableCell>
@@ -95,6 +157,17 @@ export default function Projects() {
             ))}
           </TableBody>
         </Table>
+        <Box display="flex" justifyContent="center" my={2}>
+          <Pagination
+            count={pageCount}
+            page={page}
+            onChange={(_, value) => setPage(value)}
+            color="primary"
+            shape="rounded"
+            showFirstButton
+            showLastButton
+          />
+        </Box>
       </Paper>
       <Dialog open={open} onClose={() => setOpen(false)}>
         <DialogTitle>Добавить проект</DialogTitle>
@@ -138,7 +211,7 @@ export default function Projects() {
       <Dialog open={confirmDialog.open} onClose={cancelDelete}>
         <DialogTitle>Подтвердите удаление</DialogTitle>
         <DialogContent>
-          <Typography>Вы уверены, что хотите удалить проект #{confirmDialog.id}?</Typography>
+          <Typography>Вы уверены, что хотите удалить проект "{confirmDialog.name}"?</Typography>
         </DialogContent>
         <DialogActions>
           <Button onClick={cancelDelete}>Отмена</Button>

@@ -7,7 +7,7 @@ export default function Groups() {
   const [error, setError] = useState('');
   const [openGroup, setOpenGroup] = useState(false);
   const [groupName, setGroupName] = useState('');
-  const [confirmDialog, setConfirmDialog] = useState({ open: false, id: null });
+  const [confirmDialog, setConfirmDialog] = useState({ open: false, id: null, name: '' });
   const role = localStorage.getItem('role');
 
   const fetchGroups = async () => {
@@ -35,20 +35,21 @@ export default function Groups() {
   };
 
   const handleDeleteGroup = (id) => {
-    setConfirmDialog({ open: true, id });
+    const group = groups.find(g => g.id === id);
+    setConfirmDialog({ open: true, id, name: group ? group.name : '' });
   };
   const confirmDelete = async () => {
     setError('');
     try {
       await api.delete(`/roles_groups/groups/${confirmDialog.id}`);
-      setConfirmDialog({ open: false, id: null });
+      setConfirmDialog({ open: false, id: null, name: '' });
       fetchGroups();
     } catch {
       setError('Ошибка удаления группы');
-      setConfirmDialog({ open: false, id: null });
+      setConfirmDialog({ open: false, id: null, name: '' });
     }
   };
-  const cancelDelete = () => setConfirmDialog({ open: false, id: null });
+  const cancelDelete = () => setConfirmDialog({ open: false, id: null, name: '' });
 
   const handleBlockGroup = async (id) => {
     setError('');
@@ -121,7 +122,7 @@ export default function Groups() {
       <Dialog open={confirmDialog.open} onClose={cancelDelete}>
         <DialogTitle>Подтвердите удаление</DialogTitle>
         <DialogContent>
-          <Typography>Вы уверены, что хотите удалить группу #{confirmDialog.id}?</Typography>
+          <Typography>Вы уверены, что хотите удалить группу "{confirmDialog.name}"?</Typography>
         </DialogContent>
         <DialogActions>
           <Button onClick={cancelDelete}>Отмена</Button>

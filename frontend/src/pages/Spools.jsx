@@ -4,6 +4,9 @@ import { fetchPlasticTypes, addPlasticType } from '../api/plasticTypes';
 import { Box, Typography, Button, Table, TableBody, TableCell, TableHead, TableRow, Paper, Dialog, DialogTitle, DialogContent, TextField, DialogActions, Alert, MenuItem, Select, InputLabel, FormControl, IconButton, Grid, Autocomplete } from '@mui/material';
 import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
 import FileDownload from 'js-file-download';
+import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
+import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward';
+import Pagination from '@mui/material/Pagination';
 
 export default function Spools() {
   const [spools, setSpools] = useState([]);
@@ -15,11 +18,17 @@ export default function Spools() {
   const [showAddType, setShowAddType] = useState(false);
   const [newType, setNewType] = useState('');
   const [selectedGroup, setSelectedGroup] = useState('all');
+  const [selectedType, setSelectedType] = useState('all');
   const [usageDialog, setUsageDialog] = useState({ open: false, spool: null });
   const [usageForm, setUsageForm] = useState({ amount_used: '', purpose: '', project_id: '' });
   const [usageError, setUsageError] = useState('');
   const [projects, setProjects] = useState([]);
   const [confirmDialog, setConfirmDialog] = useState({ open: false, id: null });
+  const [search, setSearch] = useState('');
+  const [minWeightRemaining, setMinWeightRemaining] = useState('');
+  const [sort, setSort] = useState({ field: '', direction: 'asc' }); // field: 'weight_total' | 'weight_remaining'
+  const [page, setPage] = useState(1);
+  const rowsPerPage = 10;
   const role = localStorage.getItem('role');
   const API_URL = "http://localhost:8000";
 
@@ -93,20 +102,22 @@ export default function Spools() {
 
   const handleDelete = async (id) => {
     setError('');
-    setConfirmDialog({ open: true, id });
+    const spool = spools.find(s => s.id === id);
+    const type = plasticTypes.find(t => t.id === spool?.plastic_type_id)?.name || '';
+    setConfirmDialog({ open: true, id, desc: spool ? `${type} ${spool.color}` : '' });
   };
   const confirmDelete = async () => {
     setError('');
     try {
       await api.delete(`/spools/${confirmDialog.id}`);
-      setConfirmDialog({ open: false, id: null });
+      setConfirmDialog({ open: false, id: null, desc: '' });
       fetchSpools();
     } catch {
       setError('Ошибка удаления катушки');
-      setConfirmDialog({ open: false, id: null });
+      setConfirmDialog({ open: false, id: null, desc: '' });
     }
   };
-  const cancelDelete = () => setConfirmDialog({ open: false, id: null });
+  const cancelDelete = () => setConfirmDialog({ open: false, id: null, desc: '' });
 
   // Скачивание QR-кода через axios с токеном
   const handleDownloadQr = async (spoolId, fileName = 'qr_code.png') => {
@@ -148,46 +159,155 @@ export default function Spools() {
   };
 
   // Фильтрация катушек по группе (только для админа)
-  const filteredSpools = role === 'admin' && selectedGroup !== 'all'
+  let filteredSpools = role === 'admin' && selectedGroup !== 'all'
     ? spools.filter(s => s.group_id === Number(selectedGroup))
     : spools;
 
+  // Фильтр по типу пластика
+  if (selectedType !== 'all') {
+    filteredSpools = filteredSpools.filter(s => String(s.plastic_type_id) === String(selectedType));
+  }
+
+  // Фильтр по минимальному остатку пластика
+  if (minWeightRemaining !== '' && !isNaN(Number(minWeightRemaining))) {
+    filteredSpools = filteredSpools.filter(s => Number(s.weight_remaining) >= Number(minWeightRemaining));
+  }
+
+  // Универсальный поиск по таблице катушек
+  const searchedSpools = filteredSpools.filter(spool => {
+    const type = plasticTypes.find(t => t.id === spool.plastic_type_id)?.name || '';
+    const group = groups.find(g => Number(g.id) === Number(spool.group_id))?.name || '';
+    const values = [
+      String(spool.id),
+      type,
+      spool.color,
+      String(spool.weight_total),
+      String(spool.weight_remaining),
+      group
+    ].join(' ').toLowerCase();
+    return values.includes(search.toLowerCase());
+  });
+
+  // Сортировка
+  const sortedSpools = [...searchedSpools].sort((a, b) => {
+    if (!sort.field) return 0;
+    const dir = sort.direction === 'asc' ? 1 : -1;
+    return (a[sort.field] - b[sort.field]) * dir;
+  });
+
+  const pagedSpools = sortedSpools.slice((page - 1) * rowsPerPage, page * rowsPerPage);
+  const pageCount = Math.ceil(sortedSpools.length / rowsPerPage);
+
   return (
     <Box>
-      <Typography variant="h5" mb={2}>Катушки</Typography>
-      <Button variant="contained" onClick={() => setOpen(true)} sx={{ mb: 2 }}>Добавить катушку</Button>
+      <Typography variant="h5" align="center" sx={{ mt: 3, mb: 3, fontWeight: 600 }}>
+        Катушки
+      </Typography>
+      <Grid container spacing={2} alignItems="center" mb={3}>
+        <Grid item xs={12} md={3}>
+          <TextField
+            label="Поиск по таблице"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            size="small"
+            fullWidth
+          />
+        </Grid>
+        <Grid item xs={12} md={3}>
+          <Autocomplete
+            size="small"
+            options={[{ label: 'Все типы', id: 'all' }, ...plasticTypes.map(t => ({ label: t.name, id: t.id }))]}
+            value={
+              selectedType === 'all'
+                ? { label: 'Все типы', id: 'all' }
+                : plasticTypes.find(t => String(t.id) === String(selectedType))
+                  ? { label: plasticTypes.find(t => String(t.id) === String(selectedType)).name, id: selectedType }
+                  : { label: 'Все типы', id: 'all' }
+            }
+            onChange={(_, newValue) => {
+              setSelectedType(newValue ? newValue.id : 'all');
+            }}
+            renderInput={params => <TextField {...params} label="Тип пластика" fullWidth />}
+            isOptionEqualToValue={(option, value) => String(option.id) === String(value.id)}
+            sx={{ minWidth: 180, maxWidth: 240 }}
+          />
+        </Grid>
+        {role === 'admin' && (
+          <Grid item xs={12} md={3}>
+            <FormControl size="small" sx={{ minWidth: 180, maxWidth: 240 }}>
+              <InputLabel id="filter-group-label">Фильтр по группе</InputLabel>
+              <Select
+                labelId="filter-group-label"
+                value={selectedGroup}
+                label="Фильтр по группе"
+                onChange={e => setSelectedGroup(e.target.value)}
+              >
+                <MenuItem value="all">Все группы</MenuItem>
+                {groups.map(g => (
+                  <MenuItem key={g.id} value={g.id}>{g.name}</MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </Grid>
+        )}
+        <Grid item xs={12} md={3}>
+          <TextField
+            label="Мин. остаток (г)"
+            type="number"
+            value={minWeightRemaining}
+            onChange={e => setMinWeightRemaining(e.target.value)}
+            size="small"
+            fullWidth
+            sx={{ mb: { xs: 2, md: 0 } }}
+          />
+        </Grid>
+        <Grid item xs={12} md={3}>
+          <Button variant="contained" onClick={() => setOpen(true)} fullWidth>Добавить катушку</Button>
+        </Grid>
+      </Grid>
       {error && <Alert severity="error">{error}</Alert>}
-      {role === 'admin' && (
-        <FormControl sx={{ minWidth: 200, mb: 2, mr: 2 }} size="small">
-          <InputLabel id="filter-group-label">Фильтр по группе</InputLabel>
-          <Select
-            labelId="filter-group-label"
-            value={selectedGroup}
-            label="Фильтр по группе"
-            onChange={e => setSelectedGroup(e.target.value)}
-          >
-            <MenuItem value="all">Все группы</MenuItem>
-            {groups.map(g => (
-              <MenuItem key={g.id} value={g.id}>{g.name}</MenuItem>
-            ))}
-          </Select>
-        </FormControl>
-      )}
-      <Paper>
+      <Paper sx={{ mt: 2, mb: 3 }}>
         <Table>
           <TableHead>
             <TableRow>
-              <TableCell>ID</TableCell>
+              <TableCell>
+                <Box display="flex" alignItems="center">
+                  ID
+                  <IconButton size="small" onClick={() => setSort(s => ({ field: 'id', direction: s.field === 'id' && s.direction === 'asc' ? 'desc' : 'asc' }))}>
+                    {sort.field === 'id' ? (
+                      sort.direction === 'asc' ? <ArrowUpwardIcon fontSize="inherit" /> : <ArrowDownwardIcon fontSize="inherit" />
+                    ) : <ArrowUpwardIcon fontSize="inherit" sx={{ opacity: 0.3 }} />}
+                  </IconButton>
+                </Box>
+              </TableCell>
               <TableCell>Тип</TableCell>
               <TableCell>Цвет</TableCell>
-              <TableCell>Вес (г)</TableCell>
-              <TableCell>Остаток (г)</TableCell>
+              <TableCell>
+                <Box display="flex" alignItems="center">
+                  Вес (г)
+                  <IconButton size="small" onClick={() => setSort(s => ({ field: 'weight_total', direction: s.field === 'weight_total' && s.direction === 'asc' ? 'desc' : 'asc' }))}>
+                    {sort.field === 'weight_total' ? (
+                      sort.direction === 'asc' ? <ArrowUpwardIcon fontSize="inherit" /> : <ArrowDownwardIcon fontSize="inherit" />
+                    ) : <ArrowUpwardIcon fontSize="inherit" sx={{ opacity: 0.3 }} />}
+                  </IconButton>
+                </Box>
+              </TableCell>
+              <TableCell>
+                <Box display="flex" alignItems="center">
+                  Остаток (г)
+                  <IconButton size="small" onClick={() => setSort(s => ({ field: 'weight_remaining', direction: s.field === 'weight_remaining' && s.direction === 'asc' ? 'desc' : 'asc' }))}>
+                    {sort.field === 'weight_remaining' ? (
+                      sort.direction === 'asc' ? <ArrowUpwardIcon fontSize="inherit" /> : <ArrowDownwardIcon fontSize="inherit" />
+                    ) : <ArrowUpwardIcon fontSize="inherit" sx={{ opacity: 0.3 }} />}
+                  </IconButton>
+                </Box>
+              </TableCell>
               {role === 'admin' && <TableCell>Группа</TableCell>}
               <TableCell>QR</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
-            {filteredSpools.map(spool => (
+            {pagedSpools.map(spool => (
               <TableRow key={spool.id}>
                 <TableCell>{spool.id}</TableCell>
                 <TableCell>{plasticTypes.find(t => t.id === spool.plastic_type_id)?.name || '—'}</TableCell>
@@ -247,6 +367,17 @@ export default function Spools() {
             ))}
           </TableBody>
         </Table>
+        <Box display="flex" justifyContent="center" my={2}>
+          <Pagination
+            count={pageCount}
+            page={page}
+            onChange={(_, value) => setPage(value)}
+            color="primary"
+            shape="rounded"
+            showFirstButton
+            showLastButton
+          />
+        </Box>
       </Paper>
       <Dialog open={open} onClose={() => setOpen(false)} fullWidth maxWidth="sm">
         <DialogTitle>Добавить катушку</DialogTitle>
@@ -355,11 +486,9 @@ export default function Spools() {
                 : ''
             }
             onInputChange={(e, newInput) => {
-              // Если пользователь вводит текст, сохраняем его как строку
               setUsageForm(f => ({ ...f, project_id: newInput }));
             }}
             onChange={(e, newValue) => {
-              // Если выбрали из списка — сохраняем id, иначе текст
               if (typeof newValue === 'object' && newValue && newValue.id) {
                 setUsageForm(f => ({ ...f, project_id: newValue.id }));
               } else if (typeof newValue === 'string') {
@@ -391,7 +520,7 @@ export default function Spools() {
       <Dialog open={confirmDialog.open} onClose={cancelDelete} fullWidth maxWidth="sm">
         <DialogTitle>Подтвердите удаление</DialogTitle>
         <DialogContent>
-          <Typography>Вы уверены, что хотите удалить катушку #{confirmDialog.id}?</Typography>
+          <Typography>Вы уверены, что хотите удалить катушку "{confirmDialog.desc}"?</Typography>
         </DialogContent>
         <DialogActions>
           <Button onClick={cancelDelete}>Отмена</Button>
