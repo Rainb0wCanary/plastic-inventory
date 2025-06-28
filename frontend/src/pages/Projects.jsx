@@ -58,7 +58,7 @@ export default function Projects() {
               <TableCell>ID</TableCell>
               <TableCell>Название</TableCell>
               <TableCell>Описание</TableCell>
-              {role === 'admin' && <TableCell>Действия</TableCell>}
+              {(role === 'admin' || role === 'moderator') && <TableCell>Действия</TableCell>}
             </TableRow>
           </TableHead>
           <TableBody>
@@ -67,7 +67,7 @@ export default function Projects() {
                 <TableCell>{p.id}</TableCell>
                 <TableCell>{p.name}</TableCell>
                 <TableCell>{p.description}</TableCell>
-                {role === 'admin' && (
+                {(role === 'admin' || (role === 'moderator' && String(p.group_id) === String(localStorage.getItem('group_id')))) && (
                   <TableCell>
                     <Button color="error" size="small" onClick={async () => {
                       try {

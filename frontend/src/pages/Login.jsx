@@ -21,6 +21,21 @@ export default function Login({ onLogin }) {
       // Получаем роль пользователя
       const payload = JSON.parse(atob(res.data.access_token.split('.')[1]));
       localStorage.setItem('role', payload.role || 'user');
+      if (payload.role === 'moderator') {
+        if (payload.group_id) {
+          localStorage.setItem('group_id', JSON.stringify(payload.group_id));
+        } else {
+          // Если group_id нет в токене, получаем через /auth/me
+          try {
+            const me = await api.get('/auth/me');
+            if (me.data && me.data.group && me.data.group.id) {
+              localStorage.setItem('group_id', JSON.stringify(me.data.group.id));
+            }
+          } catch {}
+        }
+      } else {
+        localStorage.removeItem('group_id');
+      }
       if (onLogin) onLogin();
       navigate('/spools', { replace: true });
     } catch (err) {

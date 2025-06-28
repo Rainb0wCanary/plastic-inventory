@@ -25,7 +25,7 @@ export default function Users() {
 
   useEffect(() => {
     if (role === 'admin') {
-      api.get('/roles/').then(res => setRoles(res.data)).catch(() => setRoles([]));
+      api.get('/roles_groups/roles/').then(res => setRoles(res.data)).catch(() => setRoles([]));
       api.get('/groups/').then(res => setGroups(res.data)).catch(() => setGroups([]));
     }
     if (role === 'moderator') {
@@ -49,7 +49,12 @@ export default function Users() {
       };
       await api.post('/roles_groups/users/', payload);
       setOpen(false);
-      setForm({ username: '', password: '', role_id: '', group_id: '' });
+      if (role === 'moderator') {
+        // Сохраняем group_id для модератора после сброса формы
+        setForm({ username: '', password: '', role_id: '', group_id: form.group_id });
+      } else {
+        setForm({ username: '', password: '', role_id: '', group_id: '' });
+      }
       fetchUsers();
     } catch {
       setError('Ошибка создания пользователя');
@@ -120,11 +125,13 @@ export default function Users() {
                 <TableCell>{u.group && u.group.name}</TableCell>
                 {(role === 'admin' || role === 'moderator') && (
                   <TableCell>
-                    {(role === 'admin' && u.role && u.role.name !== 'admin' && u.username !== localStorage.getItem('username')) && (
+                    {((role === 'admin' && (u.role ? u.role.name !== 'admin' : true) && u.username !== localStorage.getItem('username')) ||
+                      (role === 'admin' && !u.role && u.username !== localStorage.getItem('username'))
+                    ) && (
                       <>
                         <Button color="error" size="small" onClick={async () => {
                           try {
-                            await api.delete(`/users/${u.id}`);
+                            await api.delete(`/roles_groups/users/${u.id}`);
                             fetchUsers();
                           } catch {
                             setError('Ошибка удаления пользователя');
@@ -133,7 +140,7 @@ export default function Users() {
                         {u.is_active === 0 ? (
                           <Button color="success" size="small" onClick={async () => {
                             try {
-                              await api.put(`/users/${u.id}/unblock`);
+                              await api.put(`/roles_groups/users/${u.id}/unblock`);
                               fetchUsers();
                             } catch {
                               setError('Ошибка разблокировки пользователя');
@@ -142,7 +149,7 @@ export default function Users() {
                         ) : (
                           <Button color="warning" size="small" onClick={async () => {
                             try {
-                              await api.put(`/users/${u.id}/block`);
+                              await api.put(`/roles_groups/users/${u.id}/block`);
                               fetchUsers();
                             } catch {
                               setError('Ошибка блокировки пользователя');
@@ -151,11 +158,11 @@ export default function Users() {
                         )}
                       </>
                     )}
-                    {role === 'moderator' && u.role && u.role.name === 'user' && u.username !== localStorage.getItem('username') && (
+                    {role === 'moderator' && u.role && u.role.name === 'user' && u.username !== localStorage.getItem('username') && u.group && String(u.group.id) === String(form.group_id) && (
                       <>
                         <Button color="error" size="small" onClick={async () => {
                           try {
-                            await api.delete(`/users/${u.id}`);
+                            await api.delete(`/roles_groups/users/${u.id}`);
                             fetchUsers();
                           } catch {
                             setError('Ошибка удаления пользователя');
@@ -164,7 +171,7 @@ export default function Users() {
                         {u.is_active === 0 ? (
                           <Button color="success" size="small" onClick={async () => {
                             try {
-                              await api.put(`/users/${u.id}/unblock`);
+                              await api.put(`/roles_groups/users/${u.id}/unblock`);
                               fetchUsers();
                             } catch {
                               setError('Ошибка разблокировки пользователя');
@@ -173,7 +180,7 @@ export default function Users() {
                         ) : (
                           <Button color="warning" size="small" onClick={async () => {
                             try {
-                              await api.put(`/users/${u.id}/block`);
+                              await api.put(`/roles_groups/users/${u.id}/block`);
                               fetchUsers();
                             } catch {
                               setError('Ошибка блокировки пользователя');

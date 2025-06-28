@@ -33,6 +33,7 @@ class ProjectOut(BaseModel):
     id: int
     name: str
     description: str | None = None
+    group_id: int | None = None
     class Config:
         from_attributes = True
 
@@ -83,11 +84,13 @@ def get_projects(db: Session = Depends(get_db), current_user: User = Depends(get
 
 @router.delete("/{project_id}", status_code=200)
 def delete_project(project_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    if not current_user.role or current_user.role.name != "admin":
-        raise HTTPException(status_code=403, detail="Только админ может удалять проекты")
+    if not current_user.role or (current_user.role.name not in ["admin", "moderator"]):
+        raise HTTPException(status_code=403, detail="Нет прав на удаление проекта")
     project = db.query(Project).filter(Project.id == project_id).first()
     if not project:
         raise HTTPException(status_code=404, detail="Проект не найден")
+    if current_user.role.name == "moderator" and project.group_id != current_user.group_id:
+        raise HTTPException(status_code=403, detail="Модератор может удалять только проекты своей группы")
     db.delete(project)
     db.commit()
     return {"ok": True}
