@@ -1,11 +1,11 @@
 import api from './axios';
 
-export const fetchPlasticTypes = async () => {
-  const res = await api.get('/plastic_types/all');
+export async function fetchPlasticTypes() {
+  const res = await api.get('/spools/types');
   return res.data;
-};
+}
 
-export const addPlasticType = async (name) => {
-  const res = await api.post('/plastic_types/add', { name });
+export async function addPlasticType(name) {
+  const res = await api.post('/spools/types', { name });
   return res.data;
-};
+}

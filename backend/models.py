@@ -28,6 +28,7 @@ class User(Base):
     is_active = Column(Integer, default=1)  # 1 - активен, 0 - заблокирован
     role = relationship("Role", back_populates="users")
     group = relationship("Group", back_populates="users")
+    plastic_types = relationship("PlasticType", back_populates="user")
 
 
 class Project(Base):
@@ -51,7 +52,7 @@ class Spool(Base):
     qr_code_path = Column(String)
     group_id = Column(Integer, ForeignKey("groups.id"), nullable=True)  # Привязка к группе
 
-    plastic_type = relationship("PlasticType")
+    plastic_type = relationship("PlasticType", back_populates="spools")
     usages = relationship("Usage", back_populates="spool")
 
 
@@ -76,3 +77,5 @@ class PlasticType(Base):
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, unique=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=True)  # null для стандартных, user_id для пользовательских
+    user = relationship("User", back_populates="plastic_types")
+    spools = relationship("Spool", back_populates="plastic_type")

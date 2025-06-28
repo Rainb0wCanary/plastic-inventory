@@ -13,6 +13,7 @@ export default function Spools() {
   const [plasticTypes, setPlasticTypes] = useState([]);
   const [showAddType, setShowAddType] = useState(false);
   const [newType, setNewType] = useState('');
+  const [selectedGroup, setSelectedGroup] = useState('all');
   const role = localStorage.getItem('role');
   const API_URL = "http://localhost:8000";
 
@@ -40,12 +41,10 @@ export default function Spools() {
   }, []);
 
   useEffect(() => {
-    if (role === 'admin') {
-      api.get('/groups/')
-        .then(res => setGroups(res.data))
-        .catch(() => setGroups([]));
-    }
-  }, [role]);
+    api.get('/groups/')
+      .then(res => setGroups(res.data))
+      .catch(() => setGroups([]));
+  }, []);
 
   const handleCreate = async () => {
     setError('');
@@ -93,11 +92,32 @@ export default function Spools() {
     }
   };
 
+  // Фильтрация катушек по группе (только для админа)
+  const filteredSpools = role === 'admin' && selectedGroup !== 'all'
+    ? spools.filter(s => s.group_id === Number(selectedGroup))
+    : spools;
+
   return (
     <Box>
       <Typography variant="h5" mb={2}>Катушки</Typography>
       <Button variant="contained" onClick={() => setOpen(true)} sx={{ mb: 2 }}>Добавить катушку</Button>
       {error && <Alert severity="error">{error}</Alert>}
+      {role === 'admin' && (
+        <FormControl sx={{ minWidth: 200, mb: 2, mr: 2 }} size="small">
+          <InputLabel id="filter-group-label">Фильтр по группе</InputLabel>
+          <Select
+            labelId="filter-group-label"
+            value={selectedGroup}
+            label="Фильтр по группе"
+            onChange={e => setSelectedGroup(e.target.value)}
+          >
+            <MenuItem value="all">Все группы</MenuItem>
+            {groups.map(g => (
+              <MenuItem key={g.id} value={g.id}>{g.name}</MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+      )}
       <Paper>
         <Table>
           <TableHead>
@@ -107,17 +127,19 @@ export default function Spools() {
               <TableCell>Цвет</TableCell>
               <TableCell>Вес (г)</TableCell>
               <TableCell>Остаток (г)</TableCell>
+              {role === 'admin' && <TableCell>Группа</TableCell>}
               <TableCell>QR</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
-            {spools.map(spool => (
+            {filteredSpools.map(spool => (
               <TableRow key={spool.id}>
                 <TableCell>{spool.id}</TableCell>
                 <TableCell>{plasticTypes.find(t => t.id === spool.plastic_type_id)?.name || '—'}</TableCell>
                 <TableCell>{spool.color}</TableCell>
                 <TableCell>{spool.weight_total}</TableCell>
                 <TableCell>{spool.weight_remaining}</TableCell>
+                {role === 'admin' && <TableCell>{groups.find(g => Number(g.id) === Number(spool.group_id))?.name || '—'}</TableCell>}
                 <TableCell>
                   {spool.qr_code_path ? (
                     <>
@@ -158,24 +180,24 @@ export default function Spools() {
       <Dialog open={open} onClose={() => setOpen(false)}>
         <DialogTitle>Добавить катушку</DialogTitle>
         <DialogContent>
-          <FormControl fullWidth margin="normal">
-            <InputLabel id="plastic-type-label">Тип пластика</InputLabel>
-            <Select
-              labelId="plastic-type-label"
-              value={form.plastic_type_id}
-              label="Тип пластика"
-              onChange={e => setForm(f => ({ ...f, plastic_type_id: e.target.value }))}
-              endAdornment={
-                <IconButton size="small" onClick={() => setShowAddType(true)}>
-                  <AddCircleOutlineIcon />
-                </IconButton>
-              }
-            >
-              {plasticTypes.map(t => (
-                <MenuItem key={t.id} value={t.id}>{t.name}</MenuItem>
-              ))}
-            </Select>
-          </FormControl>
+          <Box display="flex" alignItems="center" gap={1}>
+            <FormControl fullWidth margin="normal">
+              <InputLabel id="plastic-type-label">Тип пластика</InputLabel>
+              <Select
+                labelId="plastic-type-label"
+                value={form.plastic_type_id}
+                label="Тип пластика"
+                onChange={e => setForm(f => ({ ...f, plastic_type_id: e.target.value }))}
+              >
+                {plasticTypes.map(t => (
+                  <MenuItem key={t.id} value={t.id}>{t.name}</MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+            <IconButton size="small" onClick={() => setShowAddType(true)} sx={{ mt: 2 }}>
+              <AddCircleOutlineIcon />
+            </IconButton>
+          </Box>
           {showAddType && (
             <Box display="flex" alignItems="center" gap={1} mt={1} mb={2}>
               <TextField

@@ -13,14 +13,24 @@ router = APIRouter()
 load_dotenv()
 SECRET_KEY = os.getenv("SECRET_KEY")
 ALGORITHM = os.getenv("ALGORITHM")
+if not SECRET_KEY or not ALGORITHM:
+    raise RuntimeError("SECRET_KEY и ALGORITHM должны быть заданы в .env")
 
-# Зависимость подключения к БД
 def get_db():
     db = SessionLocal()
     try:
         yield db
     finally:
         db.close()
+
+class PlasticTypeCreate(BaseModel):
+    name: str
+
+class PlasticTypeOut(BaseModel):
+    id: int
+    name: str
+    class Config:
+        from_attributes = True
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
 
@@ -37,26 +47,28 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
         raise HTTPException(status_code=401, detail="Пользователь не найден")
     return user
 
-class PlasticTypeOut(BaseModel):
-    id: int
-    name: str
-    class Config:
-        from_attributes = True
-
-class PlasticTypeCreate(BaseModel):
-    name: str
-
-@router.get("/all", response_model=list[PlasticTypeOut])
-def get_all_plastic_types(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+@router.get("/types", response_model=list[PlasticTypeOut])
+def get_types(db: Session = Depends(get_db)):
     return db.query(PlasticType).all()
 
-@router.post("/add", response_model=PlasticTypeOut)
-def add_plastic_type(plastic: PlasticTypeCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    exists = db.query(PlasticType).filter(PlasticType.name == plastic.name).first()
-    if exists:
+@router.post("/types", response_model=PlasticTypeOut)
+def add_type(ptype: PlasticTypeCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    if db.query(PlasticType).filter_by(name=ptype.name).first():
         raise HTTPException(status_code=400, detail="Такой тип уже существует")
-    new_type = PlasticType(name=plastic.name, user_id=current_user.id)
+    new_type = PlasticType(name=ptype.name, user_id=current_user.id)
     db.add(new_type)
     db.commit()
     db.refresh(new_type)
     return new_type
+
+@router.delete("/types/{type_id}", status_code=204)
+def delete_type(type_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    ptype = db.query(PlasticType).get(type_id)
+    if not ptype:
+        raise HTTPException(status_code=404, detail="Тип не найден")
+    # Только владелец или админ может удалить пользовательский тип
+    if ptype.user_id and ptype.user_id != current_user.id and current_user.role.name != "admin":
+        raise HTTPException(status_code=403, detail="Нет доступа")
+    db.delete(ptype)
+    db.commit()
+    return

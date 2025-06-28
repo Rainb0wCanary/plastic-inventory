@@ -13,8 +13,8 @@ export default function Users() {
 
   const fetchUsers = async () => {
     try {
-      // Предполагается, что есть эндпоинт /users/ только для админа
-      const res = await api.get('/users/');
+      // Эндпоинт для пользователей теперь с префиксом /roles_groups
+      const res = await api.get('/roles_groups/users/');
       setUsers(res.data);
     } catch {
       setError('Ошибка загрузки пользователей или нет прав');
@@ -47,7 +47,7 @@ export default function Users() {
         role_id: Number(role === 'moderator' ? 3 : form.role_id), // обязательно число
         group_id: form.group_id ? Number(form.group_id) : null, // обязательно число или null
       };
-      await api.post('/users/', payload);
+      await api.post('/roles_groups/users/', payload);
       setOpen(false);
       setForm({ username: '', password: '', role_id: '', group_id: '' });
       fetchUsers();

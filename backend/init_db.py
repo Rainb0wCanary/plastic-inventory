@@ -8,15 +8,6 @@ from utils.qr_generator import generate_qr
 def hash_password(password: str) -> str:
     return bcrypt.hash(password)
 
-def ensure_standard_plastic_types():
-    std_types = ["PLA", "ABS", "PETG", "TPU"]
-    db = SessionLocal()
-    for name in std_types:
-        if not db.query(PlasticType).filter_by(name=name).first():
-            db.add(PlasticType(name=name))
-    db.commit()
-    db.close()
-
 def seed_data():
     db = SessionLocal()
     try:
@@ -42,6 +33,13 @@ def seed_data():
                 db.refresh(group)
             groups[group_name] = group
 
+        # Стандартные типы пластика
+        standard_types = ["PLA", "ABS", "PETG"]
+        for t in standard_types:
+            if not db.query(PlasticType).filter_by(name=t).first():
+                db.add(PlasticType(name=t))
+        db.commit()
+
         # Пользователи (по одному для каждой роли)
         users = [
             {"username": "admin", "password": "adminpass", "role": roles["admin"], "group": groups["GroupA"]},
@@ -65,10 +63,10 @@ def seed_data():
             db.add(project)
         db.commit()
 
-        # Катушки
-        pla_type = db.query(PlasticType).filter_by(name="PLA").first()
+        # Катушки (используем первый стандартный тип пластика)
+        plastic_type = db.query(PlasticType).filter_by(name="PLA").first()
         for i, group in enumerate(groups.values(), 1):
-            spool = Spool(plastic_type_id=pla_type.id, color=f"Color{i}", weight_total=1000, weight_remaining=900, qr_code_path="", group_id=group.id)
+            spool = Spool(plastic_type_id=plastic_type.id, color=f"Color{i}", weight_total=1000, weight_remaining=900, qr_code_path="", group_id=group.id)
             db.add(spool)
             db.commit()
             db.refresh(spool)
@@ -92,5 +90,4 @@ def seed_data():
         db.close()
 
 if __name__ == "__main__":
-    ensure_standard_plastic_types()
     seed_data()

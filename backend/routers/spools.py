@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
 from database import SessionLocal
-from models import Spool, User
+from models import Spool, User, PlasticType
 from pydantic import BaseModel
 from utils.qr_generator import generate_qr
 from fastapi.security import OAuth2PasswordBearer
@@ -41,6 +41,7 @@ class SpoolOut(BaseModel):
     weight_total: float
     weight_remaining: float
     qr_code_path: str
+    group_id: int | None = None
     class Config:
         from_attributes = True
 
@@ -63,13 +64,15 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
 @router.post("/", response_model=SpoolOut)
 def create_spool(spool: SpoolCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     is_admin = current_user.role and current_user.role.name == "admin"
-    # Только админ может явно указать group_id, остальные — только свою группу
     if is_admin and spool.group_id:
         group_id = spool.group_id
     else:
         group_id = current_user.group_id
-    # Остаток по умолчанию равен общему весу, если не указан явно
     weight_remaining = spool.weight_remaining if spool.weight_remaining is not None else spool.weight_total
+    # Проверка существования типа пластика
+    plastic_type = db.query(PlasticType).get(spool.plastic_type_id)
+    if not plastic_type:
+        raise HTTPException(status_code=400, detail="Тип пластика не найден")
     new_spool = Spool(
         plastic_type_id=spool.plastic_type_id,
         color=spool.color,
@@ -80,12 +83,9 @@ def create_spool(spool: SpoolCreate, db: Session = Depends(get_db), current_user
     db.add(new_spool)
     db.commit()
     db.refresh(new_spool)
-
-    # QR-код с ID катушки
     qr_path = generate_qr(str(new_spool.id))
     new_spool.qr_code_path = qr_path
     db.commit()
-
     return new_spool
 
 # 📄 GET /spools
@@ -127,3 +127,23 @@ def delete_spool(spool_id: int, db: Session = Depends(get_db), current_user: Use
     db.delete(spool)
     db.commit()
     return
+
+# Получить все типы пластика (для фронта)
+@router.get("/types", response_model=list[dict])
+def get_types(db: Session = Depends(get_db)):
+    types = db.query(PlasticType).all()
+    return [{"id": t.id, "name": t.name} for t in types]
+
+# Добавить тип пластика (для фронта)
+@router.post("/types", response_model=dict)
+def add_type(data: dict, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    name = data.get("name")
+    if not name:
+        raise HTTPException(status_code=400, detail="Имя обязательно")
+    if db.query(PlasticType).filter_by(name=name).first():
+        raise HTTPException(status_code=400, detail="Такой тип уже существует")
+    new_type = PlasticType(name=name, user_id=current_user.id)
+    db.add(new_type)
+    db.commit()
+    db.refresh(new_type)
+    return {"id": new_type.id, "name": new_type.name}

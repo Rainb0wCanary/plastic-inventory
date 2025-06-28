@@ -65,12 +65,12 @@ export default function Usage() {
           <TableBody>
             {usages.map(u => {
               const spool = spools.find(s => s.id === u.spool_id);
+              const plasticType = plasticTypes.find(t => t.id === (spool ? spool.plastic_type_id : null));
               const project = projects.find(p => p.id === u.project_id);
-              const plasticType = spool ? plasticTypes.find(t => t.id === spool.plastic_type_id) : undefined;
               return (
                 <TableRow key={u.id}>
                   <TableCell>{u.id}</TableCell>
-                  <TableCell>{spool ? `${plasticType ? plasticType.name : ''} ${spool.color}` : u.spool_id}</TableCell>
+                  <TableCell>{spool && plasticType ? `${plasticType.name} ${spool.color}` : u.spool_id}</TableCell>
                   <TableCell>{project ? project.name : (u.project_id || '—')}</TableCell>
                   <TableCell>{u.amount_used}</TableCell>
                   <TableCell>{u.purpose}</TableCell>
@@ -106,7 +106,7 @@ export default function Usage() {
                 const plasticType = plasticTypes.find(t => t.id === s.plastic_type_id);
                 return (
                   <MenuItem key={s.id} value={s.id}>
-                    {s.id} — {plasticType ? plasticType.name : ''} {s.color}
+                    {s.id} — {plasticType ? plasticType.name : '—'} {s.color}
                   </MenuItem>
                 );
               })}

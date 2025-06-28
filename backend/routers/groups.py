@@ -1,13 +1,13 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
-from user_database import UserSessionLocal
-from user_models import User, Group, UserRole
+from models import User, Group  # Используем только models.py
 from typing import Optional
 from fastapi import Request
 from fastapi.security import OAuth2PasswordBearer
 from jose import jwt, JWTError
 from fastapi import status
+from enum import Enum
 
 router = APIRouter()
 
@@ -16,8 +16,14 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
 SECRET_KEY = "supersecretkey"  # должен совпадать с auth.py
 ALGORITHM = "HS256"
 
-def get_user_db():
-    db = UserSessionLocal()
+class UserRole(str, Enum):
+    admin = "admin"
+    moderator = "moderator"
+    user = "user"
+
+def get_db():
+    from database import SessionLocal
+    db = SessionLocal()
     try:
         yield db
     finally:
@@ -32,7 +38,7 @@ class UserCreate(BaseModel):
     role: UserRole = UserRole.user
     group_id: Optional[int] = None
 
-def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_user_db)) -> User:
+def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)) -> User:
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         username: str = payload.get("sub")
@@ -46,7 +52,7 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
     return user
 
 @router.post("/groups/", response_model=dict)
-def create_group(group: GroupCreate, current_user: User = Depends(get_current_user), db: Session = Depends(get_user_db)):
+def create_group(group: GroupCreate, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     # Проверка: только admin может создавать группы
     if current_user.role != UserRole.admin:
         raise HTTPException(status_code=403, detail="Только главный администратор может создавать группы")
@@ -59,7 +65,7 @@ def create_group(group: GroupCreate, current_user: User = Depends(get_current_us
     return {"id": db_group.id, "name": db_group.name}
 
 @router.post("/users/", response_model=dict)
-def create_user(user: UserCreate, current_user: User = Depends(get_current_user), db: Session = Depends(get_user_db)):
+def create_user(user: UserCreate, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     # Только admin может создавать модераторов и пользователей для любых групп
     # Модератор может создавать только пользователей для своей группы
     if user.role == UserRole.admin and current_user.role != UserRole.admin:
@@ -81,12 +87,15 @@ def create_user(user: UserCreate, current_user: User = Depends(get_current_user)
     return {"id": db_user.id, "username": db_user.username, "role": db_user.role.value, "group_id": db_user.group_id}
 
 @router.put("/groups/{group_id}/block", status_code=status.HTTP_200_OK)
-def block_group(group_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_user_db)):
+def block_group(group_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     if current_user.role != UserRole.admin:
         raise HTTPException(status_code=403, detail="Только админ может блокировать группы")
     group = db.query(Group).filter(Group.id == group_id).first()
     if not group:
         raise HTTPException(status_code=404, detail="Группа не найдена")
+    # Строгая проверка: нельзя блокировать свою группу
+    if current_user.group_id is not None and group.id is not None and int(current_user.group_id) == int(group.id):
+        raise HTTPException(status_code=403, detail="Нельзя заблокировать свою собственную группу")
     group.is_active = 0
     users = db.query(User).filter(User.group_id == group_id).all()
     for u in users:
@@ -95,15 +104,32 @@ def block_group(group_id: int, current_user: User = Depends(get_current_user), d
     return {"ok": True}
 
 @router.put("/groups/{group_id}/unblock", status_code=status.HTTP_200_OK)
-def unblock_group(group_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_user_db)):
+def unblock_group(group_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     if current_user.role != UserRole.admin:
         raise HTTPException(status_code=403, detail="Только админ может разблокировать группы")
     group = db.query(Group).filter(Group.id == group_id).first()
     if not group:
         raise HTTPException(status_code=404, detail="Группа не найдена")
+    # Строгая проверка: нельзя разблокировать свою группу
+    if current_user.group_id is not None and group.id is not None and int(current_user.group_id) == int(group.id):
+        raise HTTPException(status_code=403, detail="Нельзя разблокировать свою собственную группу")
     group.is_active = 1
     users = db.query(User).filter(User.group_id == group_id).all()
     for u in users:
         u.is_active = 1
+    db.commit()
+    return {"ok": True}
+
+@router.delete("/groups/{group_id}", status_code=status.HTTP_200_OK)
+def delete_group(group_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    if current_user.role != UserRole.admin:
+        raise HTTPException(status_code=403, detail="Только админ может удалять группы")
+    group = db.query(Group).filter(Group.id == group_id).first()
+    if not group:
+        raise HTTPException(status_code=404, detail="Группа не найдена")
+    # Строгая проверка: нельзя удалить свою группу
+    if current_user.group_id is not None and group.id is not None and int(current_user.group_id) == int(group.id):
+        raise HTTPException(status_code=403, detail="Нельзя удалить свою собственную группу")
+    db.delete(group)
     db.commit()
     return {"ok": True}

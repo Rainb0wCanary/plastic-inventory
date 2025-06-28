@@ -85,8 +85,17 @@ def create_group(group: GroupCreate, db: Session = Depends(get_db), current_user
     return db_group
 
 @router.get("/groups/", response_model=list[GroupOut])
-def get_groups(db: Session = Depends(get_db), current_user: User = Depends(admin_required)):
-    return db.query(Group).all()
+def get_groups(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    if current_user.role and current_user.role.name == "admin":
+        return db.query(Group).all()
+    # Для не-админа — все активные группы
+    groups = db.query(Group).filter(Group.is_active == 1).all()
+    # Если активных групп нет, но у пользователя есть своя группа — вернуть её
+    if not groups and current_user.group_id:
+        group = db.query(Group).filter(Group.id == current_user.group_id).first()
+        if group:
+            groups = [group]
+    return [GroupOut(id=g.id, name=g.name, is_active=g.is_active) for g in groups]
 
 @router.delete("/groups/{group_id}", response_model=dict)
 def delete_group(group_id: int, db: Session = Depends(get_db), current_user: User = Depends(admin_required)):
