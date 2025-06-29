@@ -63,6 +63,7 @@ class Usage(Base):
     spool_id = Column(Integer, ForeignKey("spools.id"))
     project_id = Column(Integer, ForeignKey("projects.id"), nullable=True)
     group_id = Column(Integer, ForeignKey("groups.id"), nullable=True)  # Привязка к группе
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=True)  # Пользователь, совершивший трату
     amount_used = Column(Float)
     purpose = Column(String)
     timestamp = Column(DateTime, default=datetime.utcnow)
@@ -70,6 +71,7 @@ class Usage(Base):
     spool = relationship("Spool", back_populates="usages")
     project = relationship("Project", back_populates="usages")
     group = relationship("Group")
+    user = relationship("User")
 
 
 class PlasticType(Base):

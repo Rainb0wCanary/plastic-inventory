@@ -46,7 +46,12 @@ export default function Usage() {
   const handleCreate = async () => {
     setError('');
     try {
-      await api.post('/usage/', form);
+      await api.post('/usage/', {
+        spool_id: Number(form.spool_id),
+        amount_used: Number(form.amount_used),
+        purpose: form.purpose,
+        project_id: form.project_id ? Number(form.project_id) : null
+      });
       setOpen(false);
       setForm({ spool_id: '', amount_used: '', purpose: '', project_id: '' });
       fetchUsages();

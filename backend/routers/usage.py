@@ -30,6 +30,7 @@ class UsageCreate(BaseModel):
     amount_used: float
     purpose: str
     project_id: int | None = None
+    # user_id не принимаем от клиента, он берется из current_user
 
 class UsageOut(BaseModel):
     id: int
@@ -75,7 +76,8 @@ def add_usage(usage: UsageCreate, db: Session = Depends(get_db), current_user: U
             amount_used=usage.amount_used,
             purpose=usage.purpose,
             project_id=usage.project_id,
-            group_id=spool.group_id
+            group_id=spool.group_id,
+            user_id=current_user.id
         )
     else:
         # Обычный пользователь — только катушки и проекты своей группы
@@ -97,7 +99,8 @@ def add_usage(usage: UsageCreate, db: Session = Depends(get_db), current_user: U
             amount_used=usage.amount_used,
             purpose=usage.purpose,
             project_id=usage.project_id,
-            group_id=group_id
+            group_id=group_id,
+            user_id=current_user.id
         )
     db.add(usage_entry)
     db.commit()

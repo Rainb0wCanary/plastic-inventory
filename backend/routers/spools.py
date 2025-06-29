@@ -88,7 +88,18 @@ def create_spool(spool: SpoolCreate, db: Session = Depends(get_db), current_user
     db.add(new_spool)
     db.commit()
     db.refresh(new_spool)
-    qr_path = generate_qr(str(new_spool.id))
+    # Формируем полезную нагрузку для QR-кода
+    qr_data = {
+        "id": new_spool.id,
+        "plastic_type": plastic_type.name if plastic_type else str(new_spool.plastic_type_id),
+        "color": new_spool.color,
+        "group": None,
+        "created_at": str(new_spool.id)  # Можно заменить на дату, если есть поле
+    }
+    if new_spool.group_id:
+        group = db.query(Group).get(new_spool.group_id)
+        qr_data["group"] = group.name if group else str(new_spool.group_id)
+    qr_path = generate_qr(qr_data)
     new_spool.qr_code_path = qr_path
     db.commit()
     return new_spool

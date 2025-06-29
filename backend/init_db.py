@@ -4,6 +4,7 @@ from sqlalchemy.exc import IntegrityError
 from datetime import datetime
 from passlib.hash import bcrypt
 from utils.qr_generator import generate_qr
+import random
 
 def hash_password(password: str) -> str:
     return bcrypt.hash(password)
@@ -81,7 +82,7 @@ def seed_data():
                 db.commit()
                 db.refresh(spool)
                 # Генерация QR-кода после получения id
-                qr_path = generate_qr(str(spool.id))
+                qr_path = generate_qr({"id": spool.id})
                 spool.qr_code_path = qr_path
                 db.commit()
 
@@ -89,8 +90,18 @@ def seed_data():
         spools = db.query(Spool).all()
         projects = db.query(Project).all()
         for i, (spool, project) in enumerate(zip(spools, projects), 1):
+            group_users = db.query(User).filter_by(group_id=spool.group_id).all()
             for k in range(1, 6):
-                usage = Usage(spool_id=spool.id, amount_used=100+k, purpose=f"Test usage {i}_{k}", project_id=project.id, group_id=spool.group_id, timestamp=datetime.utcnow())
+                user = random.choice(group_users) if group_users else None
+                usage = Usage(
+                    spool_id=spool.id,
+                    amount_used=100+k,
+                    purpose=f"Test usage {i}_{k}",
+                    project_id=project.id,
+                    group_id=spool.group_id,
+                    user_id=user.id if user else None,
+                    timestamp=datetime.utcnow()
+                )
                 db.add(usage)
         db.commit()
         print("Тестовые данные успешно добавлены!")
