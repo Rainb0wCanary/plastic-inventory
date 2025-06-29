@@ -319,7 +319,7 @@ export default function Spools() {
                   {spool.qr_code_path ? (
                     <Box display="flex" alignItems="center" gap={2}>
                       <img
-                        src={API_URL + spool.qr_code_path}
+                        src={API_URL + spool.qr_code_path + '?v=' + Date.now()}
                         alt={spool.qr_code_path}
                         width={80}
                         style={{ border: '1px solid red', verticalAlign: 'middle', maxWidth: '100%' }}

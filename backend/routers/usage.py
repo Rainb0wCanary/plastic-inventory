@@ -39,6 +39,7 @@ class UsageOut(BaseModel):
     purpose: str
     timestamp: datetime
     project_id: int | None = None
+    user_id: int | None = None
     class Config:
         from_attributes = True
 

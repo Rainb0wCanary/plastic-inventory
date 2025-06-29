@@ -21,6 +21,7 @@ export default function Usage() {
   const rowsPerPage = 10;
   const [groups, setGroups] = useState([]);
   const [selectedGroup, setSelectedGroup] = useState('all');
+  const [users, setUsers] = useState([]);
 
   const fetchUsages = async () => {
     try {
@@ -41,6 +42,7 @@ export default function Usage() {
       .catch(() => setProjects([]));
     fetchPlasticTypes().then(setPlasticTypes).catch(() => setPlasticTypes([]));
     api.get('/groups/').then(res => setGroups(res.data)).catch(() => setGroups([]));
+    api.get('/roles_groups/users/').then(res => setUsers(res.data)).catch(() => setUsers([]));
   }, []);
 
   const handleCreate = async () => {
@@ -196,6 +198,7 @@ export default function Usage() {
                   </IconButton>
                 </Box>
               </TableCell>
+              <TableCell>Пользователь</TableCell>
               <TableCell>Действия</TableCell>
             </TableRow>
           </TableHead>
@@ -214,6 +217,7 @@ export default function Usage() {
                   <TableCell>{u.amount_used}</TableCell>
                   <TableCell>{u.purpose}</TableCell>
                   <TableCell>{new Date(u.timestamp).toLocaleString()}</TableCell>
+                  <TableCell>{users.find(user => user.id === u.user_id)?.username || '—'}</TableCell>
                   <TableCell>
                     <Button color="error" size="small" onClick={() => handleDelete(u.id)}>
                       Удалить
