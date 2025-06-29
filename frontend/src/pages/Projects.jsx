@@ -128,145 +128,149 @@ export default function Projects() {
   }, [search, selectedGroup]);
 
   return (
-    <Box>
-      <Typography variant="h5" align="center" sx={{ mt: 3, mb: 3, fontWeight: 600 }}>
-        Проекты
-      </Typography>
-      <Grid container spacing={2} alignItems="center" mb={3}>
-        <Grid item xs={12} md={4}>
-          <TextField
-            label="Поиск по таблице"
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            size="small"
-            fullWidth
-          />
-        </Grid>
-        {role === 'admin' && (
+    <Box sx={{ width: '100%', display: 'flex', justifyContent: 'center' }}>
+      <Box sx={{ width: '100%', maxWidth: 1200, px: { xs: 1, sm: 2 } }}>
+        <Typography variant="h5" align="center" sx={{ mt: 3, mb: 3, fontWeight: 600 }}>
+          Проекты
+        </Typography>
+        <Grid container spacing={2} alignItems="center" mb={3}>
           <Grid item xs={12} md={4}>
-            <Autocomplete
+            <TextField
+              label="Поиск по таблице"
+              value={search}
+              onChange={e => setSearch(e.target.value)}
               size="small"
-              options={[{ label: 'Все группы', id: 'all' }, ...groups.map(g => ({ label: g.name, id: g.id }))]}
-              value={
-                selectedGroup === 'all'
-                  ? { label: 'Все группы', id: 'all' }
-                  : groups.find(g => String(g.id) === String(selectedGroup))
-                    ? { label: groups.find(g => String(g.id) === String(selectedGroup)).name, id: selectedGroup }
-                    : { label: 'Все группы', id: 'all' }
-              }
-              onChange={(_, newValue) => {
-                setSelectedGroup(newValue ? newValue.id : 'all');
-              }}
-              renderInput={params => <TextField {...params} label="Группа" fullWidth />}
-              isOptionEqualToValue={(option, value) => String(option.id) === String(value.id)}
-              sx={{ minWidth: 180, maxWidth: 240 }}
+              fullWidth
             />
           </Grid>
-        )}
-        <Grid item xs={12} md={4}>
-          <Button variant="contained" onClick={() => setOpen(true)} fullWidth>Добавить проект</Button>
-        </Grid>
-      </Grid>
-      {error && <Alert severity="error">{error}</Alert>}
-      <Paper sx={{ mt: 2, mb: 3 }}>
-        <Table>
-          <TableHead>
-            <TableRow>
-              <TableCell>
-                <Box display="flex" alignItems="center">
-                  ID
-                  <IconButton size="small" onClick={() => setSort(s => ({ field: 'id', direction: s.field === 'id' && s.direction === 'asc' ? 'desc' : 'asc' }))}>
-                    {sort.field === 'id' ? (
-                      sort.direction === 'asc' ? <ArrowUpwardIcon fontSize="inherit" /> : <ArrowDownwardIcon fontSize="inherit" />
-                    ) : <ArrowUpwardIcon fontSize="inherit" sx={{ opacity: 0.3 }} />}
-                  </IconButton>
-                </Box>
-              </TableCell>
-              <TableCell>Название</TableCell>
-              <TableCell>Описание</TableCell>
-              {role === 'admin' && <TableCell>Группа</TableCell>}
-              {(role === 'admin' || role === 'moderator') && <TableCell>Действия</TableCell>}
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {pagedProjects.map(p => (
-              <TableRow key={p.id}>
-                <TableCell>{p.id}</TableCell>
-                <TableCell>{p.name}</TableCell>
-                <TableCell>{p.description}</TableCell>
-                {role === 'admin' && <TableCell>{groups.find(g => g.id === p.group_id)?.name || '—'}</TableCell>}
-                {(role === 'admin' || (role === 'moderator' && String(p.group_id) === String(localStorage.getItem('group_id')))) && (
-                  <TableCell>
-                    <Button color="error" size="small" onClick={() => handleDelete(p.id)}>
-                      Удалить
-                    </Button>
-                  </TableCell>
-                )}
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-        <Box display="flex" justifyContent="center" my={2}>
-          <Pagination
-            count={pageCount}
-            page={page}
-            onChange={(_, value) => setPage(value)}
-            color="primary"
-            shape="rounded"
-            showFirstButton
-            showLastButton
-          />
-        </Box>
-      </Paper>
-      <Dialog open={open} onClose={() => setOpen(false)}>
-        <DialogTitle>Добавить проект</DialogTitle>
-        <DialogContent>
-          <TextField label="Название" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} fullWidth margin="normal" />
-          <TextField label="Описание" value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} fullWidth margin="normal" />
           {role === 'admin' && (
-            <Autocomplete
-              fullWidth
-              options={groups.map(g => ({ label: g.name, id: g.id }))}
-              value={
-                form.group_id
-                  ? (groups.find(g => g.id === form.group_id)?.name || form.group_id)
-                  : ''
-              }
-              onInputChange={(e, newInput) => {
-                setForm(f => ({ ...f, group_id: newInput }));
-              }}
-              onChange={(e, newValue) => {
-                if (typeof newValue === 'object' && newValue && typeof newValue.id !== 'undefined') {
-                  setForm(f => ({ ...f, group_id: newValue.id }));
-                } else if (typeof newValue === 'string') {
-                  setForm(f => ({ ...f, group_id: newValue }));
-                } else {
-                  setForm(f => ({ ...f, group_id: '' }));
+            <Grid item xs={12} md={4}>
+              <Autocomplete
+                size="small"
+                options={[{ label: 'Все группы', id: 'all' }, ...groups.map(g => ({ label: g.name, id: g.id }))]}
+                value={
+                  selectedGroup === 'all'
+                    ? { label: 'Все группы', id: 'all' }
+                    : groups.find(g => String(g.id) === String(selectedGroup))
+                      ? { label: groups.find(g => String(g.id) === String(selectedGroup)).name, id: selectedGroup }
+                      : { label: 'Все группы', id: 'all' }
                 }
-              }}
-              renderInput={params => (
-                <TextField {...params} label="Группа" margin="normal" fullWidth />
-              )}
-              sx={{ mb: 2 }}
-            />
+                onChange={(_, newValue) => {
+                  setSelectedGroup(newValue ? newValue.id : 'all');
+                }}
+                renderInput={params => <TextField {...params} label="Группа" fullWidth />}
+                isOptionEqualToValue={(option, value) => String(option.id) === String(value.id)}
+                sx={{ minWidth: 180, maxWidth: 240 }}
+              />
+            </Grid>
           )}
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setOpen(false)}>Отмена</Button>
-          <Button onClick={handleCreate} variant="contained">Создать</Button>
-        </DialogActions>
-      </Dialog>
-      {/* Диалог подтверждения удаления проекта */}
-      <Dialog open={confirmDialog.open} onClose={cancelDelete}>
-        <DialogTitle>Подтвердите удаление</DialogTitle>
-        <DialogContent>
-          <Typography>Вы уверены, что хотите удалить проект "{confirmDialog.name}"?</Typography>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={cancelDelete}>Отмена</Button>
-          <Button onClick={confirmDelete} color="error" variant="contained">Удалить</Button>
-        </DialogActions>
-      </Dialog>
+          <Grid item xs={12} md={4}>
+            <Button variant="contained" onClick={() => setOpen(true)} fullWidth>Добавить проект</Button>
+          </Grid>
+        </Grid>
+        {error && <Alert severity="error">{error}</Alert>}
+        <Paper sx={{ mt: 2, mb: 3, width: '100%' }}>
+          <Table sx={{ width: '100%', tableLayout: 'fixed' }}>
+            <TableHead>
+              <TableRow>
+                <TableCell sx={{ wordBreak: 'break-word' }}>
+                  <Box display="flex" alignItems="center">
+                    ID
+                    <IconButton size="small" onClick={() => setSort(s => ({ field: 'id', direction: s.field === 'id' && s.direction === 'asc' ? 'desc' : 'asc' }))}>
+                      {sort.field === 'id' ? (
+                        sort.direction === 'asc' ? <ArrowUpwardIcon fontSize="inherit" /> : <ArrowDownwardIcon fontSize="inherit" />
+                      ) : <ArrowUpwardIcon fontSize="inherit" sx={{ opacity: 0.3 }} />}
+                    </IconButton>
+                  </Box>
+                </TableCell>
+                <TableCell sx={{ wordBreak: 'break-word' }}>Название</TableCell>
+                <TableCell sx={{ wordBreak: 'break-word' }}>Описание</TableCell>
+                {role === 'admin' && <TableCell sx={{ wordBreak: 'break-word' }}>Группа</TableCell>}
+                {(role === 'admin' || role === 'moderator') && <TableCell sx={{ wordBreak: 'break-word' }}>Действия</TableCell>}
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {pagedProjects.map(p => (
+                <TableRow key={p.id}>
+                  <TableCell>{p.id}</TableCell>
+                  <TableCell>{p.name}</TableCell>
+                  <TableCell>{p.description}</TableCell>
+                  {role === 'admin' && <TableCell>{groups.find(g => g.id === p.group_id)?.name || '—'}</TableCell>}
+                  {(role === 'admin' || (role === 'moderator' && String(p.group_id) === String(localStorage.getItem('group_id')))) && (
+                    <TableCell>
+                      <Button color="error" size="small" variant="contained" onClick={() => handleDelete(p.id)}>
+                        Удалить
+                      </Button>
+                    </TableCell>
+                  )}
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+          <Box display="flex" justifyContent="center" my={2}>
+            <Pagination
+              count={pageCount}
+              page={page}
+              onChange={(_, value) => setPage(value)}
+              color="primary"
+              shape="rounded"
+              showFirstButton
+              showLastButton
+            />
+          </Box>
+        </Paper>
+        <Dialog open={open} onClose={() => setOpen(false)}>
+          <DialogTitle>Добавить проект</DialogTitle>
+          <DialogContent>
+            <TextField label="Название" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} fullWidth margin="normal" />
+            <TextField label="Описание" value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} fullWidth margin="normal" />
+            {role === 'admin' && (
+              <Autocomplete
+                fullWidth
+                options={groups.map(g => ({ label: g.name, id: g.id }))}
+                value={
+                  form.group_id
+                    ? (groups.find(g => g.id === form.group_id)?.name || form.group_id)
+                    : ''
+                }
+                onInputChange={(e, newInput) => {
+                  setForm(f => ({ ...f, group_id: newInput }));
+                }}
+                onChange={(e, newValue) => {
+                  if (typeof newValue === 'object' && newValue && typeof newValue.id !== 'undefined') {
+                    setForm(f => ({ ...f, group_id: newValue.id }));
+                  } else if (typeof newValue === 'string') {
+                    setForm(f => ({ ...f, group_id: newValue }));
+                  } else {
+                    setForm(f => ({ ...f, group_id: '' }));
+                  }
+                }}
+                renderInput={params => (
+                  <TextField {...params} label="Группа" margin="normal" fullWidth />
+                )}
+                sx={{ mb: 2 }}
+              />
+            )}
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setOpen(false)}>Отмена</Button>
+            <Button onClick={handleCreate} variant="contained">Создать</Button>
+          </DialogActions>
+        </Dialog>
+        {/* Диалог подтверждения удаления проекта */}
+        <Dialog open={confirmDialog.open} onClose={cancelDelete}>
+          <DialogTitle>Подтвердите удаление</DialogTitle>
+          <DialogContent>
+            <Typography>Вы уверены, что хотите удалить проект "{confirmDialog.name}"?</Typography>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={cancelDelete}>Отмена</Button>
+            <Button onClick={confirmDelete} color="error" variant="contained">
+              Удалить
+            </Button>
+          </DialogActions>
+        </Dialog>
+      </Box>
     </Box>
   );
 }

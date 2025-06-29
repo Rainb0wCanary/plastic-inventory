@@ -155,222 +155,226 @@ export default function Usage() {
   }, [search, form.spool_id, form.project_id, selectedGroup]);
 
   return (
-    <Box>
-      <Typography variant="h5" align="center" sx={{ mt: 3, mb: 3, fontWeight: 600 }}>
-        Траты
-      </Typography>
-      <Grid container spacing={2} alignItems="center" mb={3}>
-        <Grid item xs={12} md={4}>
-          <TextField
-            label="Поиск по таблице"
-            value={search}
-            onChange={e => {
-              setSearch(e.target.value);
-              setPage(1); // Сброс на первую страницу при изменении поиска
-            }}
-            size="small"
-            fullWidth
-          />
-        </Grid>
-        {localStorage.getItem('role') === 'admin' && (
+    <Box sx={{ maxWidth: 1200, width: '100%', p: 2, display: 'flex', justifyContent: 'center', mx: 'auto' }}>
+      <Box sx={{ width: '100%' }}>
+        <Typography variant="h5" align="center" sx={{ mt: 3, mb: 3, fontWeight: 600 }}>
+          Траты
+        </Typography>
+        <Grid container spacing={2} alignItems="center" mb={3}>
           <Grid item xs={12} md={4}>
-            <Autocomplete
-              size="small"
-              options={[{ label: 'Все группы', id: 'all' }, ...groups.map(g => ({ label: g.name, id: g.id }))]}
-              value={
-                selectedGroup === 'all'
-                  ? { label: 'Все группы', id: 'all' }
-                  : groups.find(g => String(g.id) === String(selectedGroup))
-                    ? { label: groups.find(g => String(g.id) === String(selectedGroup)).name, id: selectedGroup }
-                    : { label: 'Все группы', id: 'all' }
-              }
-              onChange={(_, newValue) => {
-                setSelectedGroup(newValue ? newValue.id : 'all');
-                setPage(1); // Сброс на первую страницу при смене группы
+            <TextField
+              label="Поиск по таблице"
+              value={search}
+              onChange={e => {
+                setSearch(e.target.value);
+                setPage(1); // Сброс на первую страницу при изменении поиска
               }}
-              renderInput={params => <TextField {...params} label="Группа" fullWidth />}
-              isOptionEqualToValue={(option, value) => String(option.id) === String(value.id)}
-              sx={{ minWidth: 180, maxWidth: 240 }}
+              size="small"
+              fullWidth
             />
           </Grid>
-        )}
-        <Grid item xs={12} md={4}>
-          <Button variant="contained" onClick={() => setOpen(true)} fullWidth>Добавить трату</Button>
+          {localStorage.getItem('role') === 'admin' && (
+            <Grid item xs={12} md={4}>
+              <Autocomplete
+                size="small"
+                options={[{ label: 'Все группы', id: 'all' }, ...groups.map(g => ({ label: g.name, id: g.id }))]}
+                value={
+                  selectedGroup === 'all'
+                    ? { label: 'Все группы', id: 'all' }
+                    : groups.find(g => String(g.id) === String(selectedGroup))
+                      ? { label: groups.find(g => String(g.id) === String(selectedGroup)).name, id: selectedGroup }
+                      : { label: 'Все группы', id: 'all' }
+                }
+                onChange={(_, newValue) => {
+                  setSelectedGroup(newValue ? newValue.id : 'all');
+                  setPage(1); // Сброс на первую страницу при смене группы
+                }}
+                renderInput={params => <TextField {...params} label="Группа" fullWidth />}
+                isOptionEqualToValue={(option, value) => String(option.id) === String(value.id)}
+                sx={{ minWidth: 180, maxWidth: 240 }}
+              />
+            </Grid>
+          )}
+          <Grid item xs={12} md={4}>
+            <Button variant="contained" onClick={() => setOpen(true)} fullWidth>Добавить трату</Button>
+          </Grid>
         </Grid>
-      </Grid>
-      {error && <Alert severity="error">{error}</Alert>}
-      <Paper sx={{ mt: 2, mb: 3 }}>
-        <Table>
-          <TableHead>
-            <TableRow>
-              <TableCell>
-                <Box display="flex" alignItems="center">
-                  ID
-                  <IconButton size="small" onClick={() => setSort(s => ({ field: 'id', direction: s.field === 'id' && s.direction === 'asc' ? 'desc' : 'asc' }))}>
-                    {sort.field === 'id' ? (
-                      sort.direction === 'asc' ? <ArrowUpwardIcon fontSize="inherit" /> : <ArrowDownwardIcon fontSize="inherit" />
-                    ) : <ArrowUpwardIcon fontSize="inherit" sx={{ opacity: 0.3 }} />}
-                  </IconButton>
-                </Box>
-              </TableCell>
-              <TableCell>Катушка</TableCell>
-              <TableCell>Проект</TableCell>
-              {localStorage.getItem('role') === 'admin' && <TableCell>Группа</TableCell>}
-              <TableCell>
-                <Box display="flex" alignItems="center">
-                  Кол-во (г)
-                  <IconButton size="small" onClick={() => setSort(s => ({ field: 'amount_used', direction: s.field === 'amount_used' && s.direction === 'asc' ? 'desc' : 'asc' }))}>
-                    {sort.field === 'amount_used' ? (
-                      sort.direction === 'asc' ? <ArrowUpwardIcon fontSize="inherit" /> : <ArrowDownwardIcon fontSize="inherit" />
-                    ) : <ArrowUpwardIcon fontSize="inherit" sx={{ opacity: 0.3 }} />}
-                  </IconButton>
-                </Box>
-              </TableCell>
-              <TableCell>Цель</TableCell>
-              <TableCell>
-                <Box display="flex" alignItems="center">
-                  Дата
-                  <IconButton size="small" onClick={() => setSort(s => ({ field: 'timestamp', direction: s.field === 'timestamp' && s.direction === 'asc' ? 'desc' : 'asc' }))}>
-                    {sort.field === 'timestamp' ? (
-                      sort.direction === 'asc' ? <ArrowUpwardIcon fontSize="inherit" /> : <ArrowDownwardIcon fontSize="inherit" />
-                    ) : <ArrowUpwardIcon fontSize="inherit" sx={{ opacity: 0.3 }} />}
-                  </IconButton>
-                </Box>
-              </TableCell>
-              <TableCell>Пользователь</TableCell>
-              <TableCell>Действия</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {pagedUsages.map(u => {
-              const spool = spools.find(s => s.id === u.spool_id);
-              const plasticType = plasticTypes.find(t => t.id === (spool ? spool.plastic_type_id : null));
-              const project = projects.find(p => p.id === u.project_id);
-              const group = project ? groups.find(g => g.id === project.group_id)?.name || '—' : '—';
-              return (
-                <TableRow key={u.id}>
-                  <TableCell>{u.id}</TableCell>
-                  <TableCell>{spool && plasticType ? `${plasticType.name} ${spool.color}` : u.spool_id}</TableCell>
-                  <TableCell>{project ? project.name : (u.project_id || '—')}</TableCell>
-                  {localStorage.getItem('role') === 'admin' && <TableCell>{group}</TableCell>}
-                  <TableCell>{u.amount_used}</TableCell>
-                  <TableCell>{u.purpose}</TableCell>
-                  <TableCell>{new Date(u.timestamp).toLocaleString()}</TableCell>
-                  <TableCell>{users.find(user => user.id === u.user_id)?.username || '—'}</TableCell>
-                  <TableCell>
-                    <Button color="error" size="small" onClick={() => handleDelete(u.id)}>
-                      Удалить
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              );
-            })}
-          </TableBody>
-        </Table>
-        <Box display="flex" justifyContent="center" my={2}>
-          <Pagination
-            count={pageCount}
-            page={page}
-            onChange={(_, value) => setPage(value)}
-            color="primary"
-            shape="rounded"
-            showFirstButton
-            showLastButton
-          />
-        </Box>
-      </Paper>
-      <Dialog open={open} onClose={() => setOpen(false)}>
-        <DialogTitle>Добавить трату</DialogTitle>
-        <DialogContent>
-          <Autocomplete
-            fullWidth
-            options={spools.map(s => {
-              const plasticType = plasticTypes.find(t => t.id === s.plastic_type_id);
-              return {
-                label: `${s.id} — ${plasticType ? plasticType.name : '—'} ${s.color}`,
-                id: s.id
-              };
-            })}
-            value={
-              form.spool_id
-                ? (() => {
-                    const s = spools.find(sp => sp.id === form.spool_id);
-                    if (!s) return '';
-                    const plasticType = plasticTypes.find(t => t.id === s.plastic_type_id);
-                    return `${s.id} — ${plasticType ? plasticType.name : '—'} ${s.color}`;
-                  })()
-                : ''
-            }
-            onInputChange={(e, newInput) => {
-              setForm(f => ({ ...f, spool_id: newInput }));
-              setPage(1); // Сброс на первую страницу при поиске по катушке
-            }}
-            onChange={(e, newValue) => {
-              if (typeof newValue === 'object' && newValue && newValue.id) {
-                setForm(f => ({ ...f, spool_id: newValue.id }));
-                setPage(1);
-              } else if (typeof newValue === 'string') {
-                setForm(f => ({ ...f, spool_id: newValue }));
-                setPage(1);
-              } else {
-                setForm(f => ({ ...f, spool_id: '' }));
-                setPage(1);
+        {error && <Alert severity="error">{error}</Alert>}
+        <Paper sx={{ mt: 2, mb: 3, width: '100%' }}>
+          <Table sx={{ width: '100%', tableLayout: 'fixed' }}>
+            <TableHead>
+              <TableRow>
+                <TableCell sx={{ wordBreak: 'break-word' }}>
+                  <Box display="flex" alignItems="center">
+                    ID
+                    <IconButton size="small" onClick={() => setSort(s => ({ field: 'id', direction: s.field === 'id' && s.direction === 'asc' ? 'desc' : 'asc' }))}>
+                      {sort.field === 'id' ? (
+                        sort.direction === 'asc' ? <ArrowUpwardIcon fontSize="inherit" /> : <ArrowDownwardIcon fontSize="inherit" />
+                      ) : <ArrowUpwardIcon fontSize="inherit" sx={{ opacity: 0.3 }} />}
+                    </IconButton>
+                  </Box>
+                </TableCell>
+                <TableCell sx={{ wordBreak: 'break-word' }}>Катушка</TableCell>
+                <TableCell sx={{ wordBreak: 'break-word' }}>Проект</TableCell>
+                {localStorage.getItem('role') === 'admin' && <TableCell sx={{ wordBreak: 'break-word' }}>Группа</TableCell>}
+                <TableCell sx={{ wordBreak: 'break-word' }}>
+                  <Box display="flex" alignItems="center">
+                    Кол-во (г)
+                    <IconButton size="small" onClick={() => setSort(s => ({ field: 'amount_used', direction: s.field === 'amount_used' && s.direction === 'asc' ? 'desc' : 'asc' }))}>
+                      {sort.field === 'amount_used' ? (
+                        sort.direction === 'asc' ? <ArrowUpwardIcon fontSize="inherit" /> : <ArrowDownwardIcon fontSize="inherit" />
+                      ) : <ArrowUpwardIcon fontSize="inherit" sx={{ opacity: 0.3 }} />}
+                    </IconButton>
+                  </Box>
+                </TableCell>
+                <TableCell sx={{ wordBreak: 'break-word' }}>Цель</TableCell>
+                <TableCell sx={{ wordBreak: 'break-word' }}>
+                  <Box display="flex" alignItems="center">
+                    Дата
+                    <IconButton size="small" onClick={() => setSort(s => ({ field: 'timestamp', direction: s.field === 'timestamp' && s.direction === 'asc' ? 'desc' : 'asc' }))}>
+                      {sort.field === 'timestamp' ? (
+                        sort.direction === 'asc' ? <ArrowUpwardIcon fontSize="inherit" /> : <ArrowDownwardIcon fontSize="inherit" />
+                      ) : <ArrowUpwardIcon fontSize="inherit" sx={{ opacity: 0.3 }} />}
+                    </IconButton>
+                  </Box>
+                </TableCell>
+                <TableCell sx={{ wordBreak: 'break-word' }}>Пользователь</TableCell>
+                <TableCell sx={{ wordBreak: 'break-word', whiteSpace: 'nowrap', minWidth: 110 }}>Действия</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {pagedUsages.map(u => {
+                const spool = spools.find(s => s.id === u.spool_id);
+                const plasticType = plasticTypes.find(t => t.id === (spool ? spool.plastic_type_id : null));
+                const project = projects.find(p => p.id === u.project_id);
+                const group = project ? groups.find(g => g.id === project.group_id)?.name || '—' : '—';
+                return (
+                  <TableRow key={u.id}>
+                    <TableCell sx={{ wordBreak: 'break-word' }}>{u.id}</TableCell>
+                    <TableCell sx={{ wordBreak: 'break-word' }}>{spool && plasticType ? `${plasticType.name} ${spool.color}` : u.spool_id}</TableCell>
+                    <TableCell sx={{ wordBreak: 'break-word' }}>{project ? project.name : (u.project_id || '—')}</TableCell>
+                    {localStorage.getItem('role') === 'admin' && <TableCell sx={{ wordBreak: 'break-word' }}>{group}</TableCell>}
+                    <TableCell sx={{ wordBreak: 'break-word' }}>{u.amount_used}</TableCell>
+                    <TableCell sx={{ wordBreak: 'break-word' }}>{u.purpose}</TableCell>
+                    <TableCell sx={{ wordBreak: 'break-word' }}>{new Date(u.timestamp).toLocaleString()}</TableCell>
+                    <TableCell sx={{ wordBreak: 'break-word' }}>{users.find(user => user.id === u.user_id)?.username || '—'}</TableCell>
+                    <TableCell sx={{ whiteSpace: 'nowrap', minWidth: 110 }}>
+                      <Button color="error" size="small" variant="contained" onClick={() => handleDelete(u.id)}>
+                        Удалить
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+          <Box display="flex" justifyContent="center" my={2}>
+            <Pagination
+              count={pageCount}
+              page={page}
+              onChange={(_, value) => setPage(value)}
+              color="primary"
+              shape="rounded"
+              showFirstButton
+              showLastButton
+            />
+          </Box>
+        </Paper>
+        <Dialog open={open} onClose={() => setOpen(false)}>
+          <DialogTitle>Добавить трату</DialogTitle>
+          <DialogContent>
+            <Autocomplete
+              fullWidth
+              options={spools.map(s => {
+                const plasticType = plasticTypes.find(t => t.id === s.plastic_type_id);
+                return {
+                  label: `${s.id} — ${plasticType ? plasticType.name : '—'} ${s.color}`,
+                  id: s.id
+                };
+              })}
+              value={
+                form.spool_id
+                  ? (() => {
+                      const s = spools.find(sp => sp.id === form.spool_id);
+                      if (!s) return '';
+                      const plasticType = plasticTypes.find(t => t.id === s.plastic_type_id);
+                      return `${s.id} — ${plasticType ? plasticType.name : '—'} ${s.color}`;
+                    })()
+                  : ''
               }
-            }}
-            renderInput={params => (
-              <TextField {...params} label="Катушка" margin="normal" fullWidth />
-            )}
-            sx={{ mb: 2 }}
-          />
-          <Autocomplete
-            fullWidth
-            freeSolo
-            options={[{ label: 'Без проекта', id: '' }, ...projects.map(p => ({ label: p.name, id: p.id }))]}
-            value={
-              form.project_id
-                ? (projects.find(p => p.id === form.project_id)?.name || form.project_id)
-                : 'Без проекта'
-            }
-            onInputChange={(e, newInput) => {
-              setForm(f => ({ ...f, project_id: newInput }));
-              setPage(1); // Сброс на первую страницу при поиске по проекту
-            }}
-            onChange={(e, newValue) => {
-              if (typeof newValue === 'object' && newValue && typeof newValue.id !== 'undefined') {
-                setForm(f => ({ ...f, project_id: newValue.id }));
-                setPage(1); // Сброс на первую страницу при выборе проекта
-              } else if (typeof newValue === 'string') {
-                setForm(f => ({ ...f, project_id: newValue }));
-                setPage(1);
-              } else {
-                setForm(f => ({ ...f, project_id: '' }));
-                setPage(1);
+              onInputChange={(e, newInput) => {
+                setForm(f => ({ ...f, spool_id: newInput }));
+                setPage(1); // Сброс на первую страницу при поиске по катушке
+              }}
+              onChange={(e, newValue) => {
+                if (typeof newValue === 'object' && newValue && newValue.id) {
+                  setForm(f => ({ ...f, spool_id: newValue.id }));
+                  setPage(1);
+                } else if (typeof newValue === 'string') {
+                  setForm(f => ({ ...f, spool_id: newValue }));
+                  setPage(1);
+                } else {
+                  setForm(f => ({ ...f, spool_id: '' }));
+                  setPage(1);
+                }
+              }}
+              renderInput={params => (
+                <TextField {...params} label="Катушка" margin="normal" fullWidth />
+              )}
+              sx={{ mb: 2 }}
+            />
+            <Autocomplete
+              fullWidth
+              freeSolo
+              options={[{ label: 'Без проекта', id: '' }, ...projects.map(p => ({ label: p.name, id: p.id }))]}
+              value={
+                form.project_id
+                  ? (projects.find(p => p.id === form.project_id)?.name || form.project_id)
+                  : 'Без проекта'
               }
-            }}
-            renderInput={params => (
-              <TextField {...params} label="Проект" margin="normal" fullWidth />
-            )}
-            sx={{ mb: 2 }}
-          />
-          <TextField label="Кол-во (г)" type="number" value={form.amount_used} onChange={e => setForm(f => ({ ...f, amount_used: e.target.value }))} fullWidth margin="normal" />
-          <TextField label="Цель" value={form.purpose} onChange={e => setForm(f => ({ ...f, purpose: e.target.value }))} fullWidth margin="normal" />
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setOpen(false)}>Отмена</Button>
-          <Button onClick={handleCreate} variant="contained">Создать</Button>
-        </DialogActions>
-      </Dialog>
-      {/* Диалог подтверждения удаления траты */}
-      <Dialog open={confirmDialog.open} onClose={cancelDelete}>
-        <DialogTitle>Подтвердите удаление</DialogTitle>
-        <DialogContent>
-          <Typography>Вы уверены, что хотите удалить трату #{confirmDialog.id} за "{confirmDialog.date}"?</Typography>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={cancelDelete}>Отмена</Button>
-          <Button onClick={confirmDelete} color="error" variant="contained">Удалить</Button>
-        </DialogActions>
-      </Dialog>
+              onInputChange={(e, newInput) => {
+                setForm(f => ({ ...f, project_id: newInput }));
+                setPage(1); // Сброс на первую страницу при поиске по проекту
+              }}
+              onChange={(e, newValue) => {
+                if (typeof newValue === 'object' && newValue && typeof newValue.id !== 'undefined') {
+                  setForm(f => ({ ...f, project_id: newValue.id }));
+                  setPage(1); // Сброс на первую страницу при выборе проекта
+                } else if (typeof newValue === 'string') {
+                  setForm(f => ({ ...f, project_id: newValue }));
+                  setPage(1);
+                } else {
+                  setForm(f => ({ ...f, project_id: '' }));
+                  setPage(1);
+                }
+              }}
+              renderInput={params => (
+                <TextField {...params} label="Проект" margin="normal" fullWidth />
+              )}
+              sx={{ mb: 2 }}
+            />
+            <TextField label="Кол-во (г)" type="number" value={form.amount_used} onChange={e => setForm(f => ({ ...f, amount_used: e.target.value }))} fullWidth margin="normal" />
+            <TextField label="Цель" value={form.purpose} onChange={e => setForm(f => ({ ...f, purpose: e.target.value }))} fullWidth margin="normal" />
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setOpen(false)}>Отмена</Button>
+            <Button onClick={handleCreate} variant="contained">Создать</Button>
+          </DialogActions>
+        </Dialog>
+        {/* Диалог подтверждения удаления траты */}
+        <Dialog open={confirmDialog.open} onClose={cancelDelete}>
+          <DialogTitle>Подтвердите удаление</DialogTitle>
+          <DialogContent>
+            <Typography>Вы уверены, что хотите удалить трату #{confirmDialog.id} за "{confirmDialog.date}"?</Typography>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={cancelDelete}>Отмена</Button>
+            <Button onClick={confirmDelete} color="error" variant="contained">
+              Удалить
+            </Button>
+          </DialogActions>
+        </Dialog>
+      </Box>
     </Box>
   );
 }

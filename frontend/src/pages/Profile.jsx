@@ -16,13 +16,17 @@ export default function Profile() {
   if (!profile) return null;
 
   return (
-    <Box>
-      <Typography variant="h5" mb={2}>Профиль</Typography>
-      <Paper sx={{ p: 2 }}>
-        <Typography>Имя: {profile.username}</Typography>
-        <Typography>Роль: {profile.role && profile.role.name}</Typography>
-        <Typography>Группа: {profile.group && profile.group.name}</Typography>
-      </Paper>
+    <Box sx={{ maxWidth: 1200, width: '100%', p: 2, display: 'flex', justifyContent: 'center', mx: 'auto' }}>
+      <Box sx={{ width: '100%' }}>
+        <Typography variant="h5" mb={2} align="center" sx={{ fontWeight: 600 }}>
+          Профиль
+        </Typography>
+        <Paper sx={{ p: 2, width: '100%' }}>
+          <Typography>Имя: {profile.username}</Typography>
+          <Typography>Роль: {profile.role && profile.role.name}</Typography>
+          <Typography>Группа: {profile.group && profile.group.name}</Typography>
+        </Paper>
+      </Box>
     </Box>
   );
 }

@@ -227,332 +227,340 @@ export default function Spools() {
   const pageCount = Math.ceil(sortedSpools.length / rowsPerPage);
 
   return (
-    <Box>
-      <Typography variant="h5" align="center" sx={{ mt: 3, mb: 3, fontWeight: 600 }}>
-        Катушки
-      </Typography>
-      <Grid container spacing={2} alignItems="center" mb={3}>
-        <Grid item xs={12} md={3}>
-          <TextField
-            label="Поиск по таблице"
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            size="small"
-            fullWidth
-          />
-        </Grid>
-        <Grid item xs={12} md={3}>
-          <Autocomplete
-            size="small"
-            options={[{ label: 'Все типы', id: 'all' }, ...plasticTypes.map(t => ({ label: t.name, id: t.id }))]}
-            value={
-              selectedType === 'all'
-                ? { label: 'Все типы', id: 'all' }
-                : plasticTypes.find(t => String(t.id) === String(selectedType))
-                  ? { label: plasticTypes.find(t => String(t.id) === String(selectedType)).name, id: selectedType }
-                  : { label: 'Все типы', id: 'all' }
-            }
-            onChange={(_, newValue) => {
-              setSelectedType(newValue ? newValue.id : 'all');
-            }}
-            renderInput={params => <TextField {...params} label="Тип пластика" fullWidth />}
-            isOptionEqualToValue={(option, value) => String(option.id) === String(value.id)}
-            sx={{ minWidth: 180, maxWidth: 240 }}
-          />
-        </Grid>
-        {role === 'admin' && (
+    <Box sx={{ width: '100%', display: 'flex', justifyContent: 'center' }}>
+      <Box sx={{ width: '100%', maxWidth: 1200, px: { xs: 1, sm: 2 } }}>
+        <Typography variant="h5" align="center" sx={{ mt: 3, mb: 3, fontWeight: 600 }}>
+          Катушки
+        </Typography>
+        <Grid container spacing={2} alignItems="center" mb={3}>
           <Grid item xs={12} md={3}>
-            <FormControl size="small" sx={{ minWidth: 180, maxWidth: 240 }}>
-              <InputLabel id="filter-group-label">Фильтр по группе</InputLabel>
-              <Select
-                labelId="filter-group-label"
-                value={selectedGroup}
-                label="Фильтр по группе"
-                onChange={e => setSelectedGroup(e.target.value)}
-              >
-                <MenuItem value="all">Все группы</MenuItem>
-                {groups.map(g => (
-                  <MenuItem key={g.id} value={g.id}>{g.name}</MenuItem>
-                ))}
-              </Select>
-            </FormControl>
+            <TextField
+              label="Поиск по таблице"
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              size="small"
+              fullWidth
+            />
           </Grid>
-        )}
-        <Grid item xs={12} md={3}>
-          <TextField
-            label="Мин. остаток (г)"
-            type="number"
-            value={minWeightRemaining}
-            onChange={e => setMinWeightRemaining(e.target.value)}
-            size="small"
-            fullWidth
-            sx={{ mb: { xs: 2, md: 0 } }}
-          />
+          <Grid item xs={12} md={3}>
+            <Autocomplete
+              size="small"
+              options={[{ label: 'Все типы', id: 'all' }, ...plasticTypes.map(t => ({ label: t.name, id: t.id }))]}
+              value={
+                selectedType === 'all'
+                  ? { label: 'Все типы', id: 'all' }
+                  : plasticTypes.find(t => String(t.id) === String(selectedType))
+                    ? { label: plasticTypes.find(t => String(t.id) === String(selectedType)).name, id: selectedType }
+                    : { label: 'Все типы', id: 'all' }
+              }
+              onChange={(_, newValue) => {
+                setSelectedType(newValue ? newValue.id : 'all');
+              }}
+              renderInput={params => <TextField {...params} label="Тип пластика" fullWidth />}
+              isOptionEqualToValue={(option, value) => String(option.id) === String(value.id)}
+              sx={{ minWidth: 180, maxWidth: 240 }}
+            />
+          </Grid>
+          {role === 'admin' && (
+            <Grid item xs={12} md={3}>
+              <FormControl size="small" sx={{ minWidth: 180, maxWidth: 240 }}>
+                <InputLabel id="filter-group-label">Фильтр по группе</InputLabel>
+                <Select
+                  labelId="filter-group-label"
+                  value={selectedGroup}
+                  label="Фильтр по группе"
+                  onChange={e => setSelectedGroup(e.target.value)}
+                  sx={{ backgroundColor: 'background.paper' }}
+                >
+                  <MenuItem value="all">Все группы</MenuItem>
+                  {groups.map(g => (
+                    <MenuItem key={g.id} value={g.id}>{g.name}</MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Grid>
+          )}
+          <Grid item xs={12} md={3}>
+            <TextField
+              label="Мин. остаток (г)"
+              type="number"
+              value={minWeightRemaining}
+              onChange={e => setMinWeightRemaining(e.target.value)}
+              size="small"
+              fullWidth
+              sx={{ mb: { xs: 2, md: 0 } }}
+            />
+          </Grid>
+          <Grid item xs={12} md={3} display="flex" justifyContent="flex-end" alignItems="center">
+            <Button variant="contained" onClick={() => setOpen(true)} sx={{ width: '100%' }}>
+              Добавить катушку
+            </Button>
+          </Grid>
         </Grid>
-        <Grid item xs={12} md={3}>
-          <Button variant="contained" onClick={() => setOpen(true)} fullWidth>Добавить катушку</Button>
-        </Grid>
-      </Grid>
-      {error && <Alert severity="error">{error}</Alert>}
-      <Paper sx={{ mt: 2, mb: 3 }}>
-        <Table>
-          <TableHead>
-            <TableRow>
-              <TableCell>
-                <Box display="flex" alignItems="center">
-                  ID
-                  <IconButton size="small" onClick={() => setSort(s => ({ field: 'id', direction: s.field === 'id' && s.direction === 'asc' ? 'desc' : 'asc' }))}>
-                    {sort.field === 'id' ? (
-                      sort.direction === 'asc' ? <ArrowUpwardIcon fontSize="inherit" /> : <ArrowDownwardIcon fontSize="inherit" />
-                    ) : <ArrowUpwardIcon fontSize="inherit" sx={{ opacity: 0.3 }} />}
-                  </IconButton>
-                </Box>
-              </TableCell>
-              <TableCell>
-                <Box display="flex" alignItems="center">
-                  Общий вес (г)
-                  <IconButton size="small" onClick={() => setSort(s => ({ field: 'weight_total', direction: s.field === 'weight_total' && s.direction === 'asc' ? 'desc' : 'asc' }))}>
-                    {sort.field === 'weight_total' ? (
-                      sort.direction === 'asc' ? <ArrowUpwardIcon fontSize="inherit" /> : <ArrowDownwardIcon fontSize="inherit" />
-                    ) : <ArrowUpwardIcon fontSize="inherit" sx={{ opacity: 0.3 }} />}
-                  </IconButton>
-                </Box>
-              </TableCell>
-              <TableCell>
-                <Box display="flex" alignItems="center">
-                  Остаток (г)
-                  <IconButton size="small" onClick={() => setSort(s => ({ field: 'weight_remaining', direction: s.field === 'weight_remaining' && s.direction === 'asc' ? 'desc' : 'asc' }))}>
-                    {sort.field === 'weight_remaining' ? (
-                      sort.direction === 'asc' ? <ArrowUpwardIcon fontSize="inherit" /> : <ArrowDownwardIcon fontSize="inherit" />
-                    ) : <ArrowUpwardIcon fontSize="inherit" sx={{ opacity: 0.3 }} />}
-                  </IconButton>
-                </Box>
-              </TableCell>
-              {role === 'admin' && <TableCell>Группа</TableCell>}
-              <TableCell>QR</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {pagedSpools.map(spool => (
-              <TableRow key={spool.id}>
-                <TableCell>{spool.id}</TableCell>
-                <TableCell>{plasticTypes.find(t => t.id === spool.plastic_type_id)?.name || '—'}</TableCell>
-                <TableCell>{spool.color}</TableCell>
-                <TableCell>{spool.weight_total}</TableCell>
-                <TableCell>{spool.weight_remaining}</TableCell>
-                {role === 'admin' && <TableCell>{groups.find(g => Number(g.id) === Number(spool.group_id))?.name || '—'}</TableCell>}
-                <TableCell>
-                  {spool.qr_code_path ? (
-                    <Box display="flex" alignItems="center" gap={2}>
+        {error && <Alert severity="error">{error}</Alert>}
+        <Paper sx={{ mt: 2, mb: 3, width: '100%' }}>
+          <Table sx={{ width: '100%', tableLayout: 'fixed' }}>
+            <TableHead>
+              <TableRow>
+                <TableCell sx={{ wordBreak: 'break-word' }}>
+                  <Box display="flex" alignItems="center">
+                    ID
+                    <IconButton size="small" onClick={() => setSort(s => ({ field: 'id', direction: s.field === 'id' && s.direction === 'asc' ? 'desc' : 'asc' }))}>
+                      {sort.field === 'id' ? (
+                        sort.direction === 'asc' ? <ArrowUpwardIcon fontSize="inherit" /> : <ArrowDownwardIcon fontSize="inherit" />
+                      ) : <ArrowUpwardIcon fontSize="inherit" sx={{ opacity: 0.3 }} />}
+                    </IconButton>
+                  </Box>
+                </TableCell>
+                <TableCell sx={{ wordBreak: 'break-word' }}>Тип пластика</TableCell>
+                <TableCell sx={{ wordBreak: 'break-word' }}>Цвет</TableCell>
+                <TableCell sx={{ wordBreak: 'break-word' }}>
+                  <Box display="flex" alignItems="center">
+                    Общий вес (г)
+                    <IconButton size="small" onClick={() => setSort(s => ({ field: 'weight_total', direction: s.field === 'weight_total' && s.direction === 'asc' ? 'desc' : 'asc' }))}>
+                      {sort.field === 'weight_total' ? (
+                        sort.direction === 'asc' ? <ArrowUpwardIcon fontSize="inherit" /> : <ArrowDownwardIcon fontSize="inherit" />
+                      ) : <ArrowUpwardIcon fontSize="inherit" sx={{ opacity: 0.3 }} />}
+                    </IconButton>
+                  </Box>
+                </TableCell>
+                <TableCell sx={{ wordBreak: 'break-word' }}>
+                  <Box display="flex" alignItems="center">
+                    Остаток (г)
+                    <IconButton size="small" onClick={() => setSort(s => ({ field: 'weight_remaining', direction: s.field === 'weight_remaining' && s.direction === 'asc' ? 'desc' : 'asc' }))}>
+                      {sort.field === 'weight_remaining' ? (
+                        sort.direction === 'asc' ? <ArrowUpwardIcon fontSize="inherit" /> : <ArrowDownwardIcon fontSize="inherit" />
+                      ) : <ArrowUpwardIcon fontSize="inherit" sx={{ opacity: 0.3 }} />}
+                    </IconButton>
+                  </Box>
+                </TableCell>
+                {role === 'admin' && <TableCell sx={{ wordBreak: 'break-word' }}>Группа</TableCell>}
+                <TableCell sx={{ wordBreak: 'break-word' }}>QR</TableCell>
+                <TableCell sx={{ wordBreak: 'break-word' }}>Действия</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {pagedSpools.map(spool => (
+                <TableRow key={spool.id}>
+                  <TableCell>{spool.id}</TableCell>
+                  <TableCell>{plasticTypes.find(t => t.id === spool.plastic_type_id)?.name || '—'}</TableCell>
+                  <TableCell>{spool.color}</TableCell>
+                  <TableCell>{spool.weight_total}</TableCell>
+                  <TableCell>{spool.weight_remaining}</TableCell>
+                  {role === 'admin' && <TableCell>{groups.find(g => Number(g.id) === Number(spool.group_id))?.name || '—'}</TableCell>}
+                  <TableCell>
+                    {spool.qr_code_path ? (
                       <img
                         src={API_URL + spool.qr_code_path + '?v=' + Date.now()}
                         alt={spool.qr_code_path}
                         width={80}
                         style={{ border: '1px solid red', verticalAlign: 'middle', maxWidth: '100%' }}
                       />
-                      <Grid container direction="column" spacing={1} sx={{ minWidth: 120 }}>
-                        <Grid item>
-                          <Button
-                            size="small"
-                            variant="outlined"
-                            fullWidth
-                            onClick={() => handleDownloadQr(spool.id, `spool_${spool.id}_qr.png`)}
-                          >
-                            Скачать
-                          </Button>
-                        </Grid>
-                        <Grid item>
-                          <Button
-                            size="small"
-                            color="error"
-                            variant="outlined"
-                            fullWidth
-                            onClick={() => handleDelete(spool.id)}
-                          >
-                            Удалить
-                          </Button>
-                        </Grid>
-                        <Grid item>
-                          <Button
-                            size="small"
-                            color="primary"
-                            variant="contained"
-                            fullWidth
-                            onClick={() => handleOpenUsage(spool)}
-                          >
-                            Потратить
-                          </Button>
-                        </Grid>
+                    ) : (
+                      '—'
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    <Grid container direction="column" spacing={1} sx={{ minWidth: 120 }}>
+                      <Grid item>
+                        <Button
+                          size="small"
+                          variant="outlined"
+                          fullWidth
+                          onClick={() => handleDownloadQr(spool.id, `spool_${spool.id}_qr.png`)}
+                        >
+                          Скачать
+                        </Button>
                       </Grid>
-                    </Box>
-                  ) : (
-                    '—'
-                  )}
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-        <Box display="flex" justifyContent="center" my={2}>
-          <Pagination
-            count={pageCount}
-            page={page}
-            onChange={(_, value) => setPage(value)}
-            color="primary"
-            shape="rounded"
-            showFirstButton
-            showLastButton
-          />
-        </Box>
-      </Paper>
-      <Dialog open={open} onClose={() => setOpen(false)} fullWidth maxWidth="sm">
-        <DialogTitle>Добавить катушку</DialogTitle>
-        <DialogContent>
-          <Box display="flex" alignItems="center" gap={1}>
-            <Autocomplete
-              freeSolo
-              options={plasticTypes.map(t => ({ label: t.name, id: t.id }))}
-              value={
-                form.plastic_type_id
-                  ? plasticTypes.find(t => t.id === form.plastic_type_id)?.name || ''
-                  : ''
-              }
-              onInputChange={(e, newInput) => {
-                setForm(f => ({ ...f, plastic_type_id: newInput }));
-              }}
-              onChange={(e, newValue) => {
-                if (typeof newValue === 'object' && newValue && newValue.id) {
-                  setForm(f => ({ ...f, plastic_type_id: newValue.id }));
-                } else if (typeof newValue === 'string') {
-                  setForm(f => ({ ...f, plastic_type_id: newValue }));
-                } else {
-                  setForm(f => ({ ...f, plastic_type_id: '' }));
-                }
-              }}
-              renderInput={(params) => (
-                <TextField {...params} label="Тип пластика" margin="normal" fullWidth />
-              )}
-              sx={{ flex: 1 }}
+                      <Grid item>
+                        <Button
+                          size="small"
+                          color="error"
+                          variant="outlined"
+                          fullWidth
+                          onClick={() => handleDelete(spool.id)}
+                        >
+                          Удалить
+                        </Button>
+                      </Grid>
+                      <Grid item>
+                        <Button
+                          size="small"
+                          color="primary"
+                          variant="contained"
+                          fullWidth
+                          onClick={() => handleOpenUsage(spool)}
+                        >
+                          Потратить
+                        </Button>
+                      </Grid>
+                    </Grid>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+          <Box display="flex" justifyContent="center" my={2}>
+            <Pagination
+              count={pageCount}
+              page={page}
+              onChange={(_, value) => setPage(value)}
+              color="primary"
+              shape="rounded"
+              showFirstButton
+              showLastButton
             />
-            <IconButton size="small" onClick={() => setShowAddType(true)} sx={{ mt: 2 }}>
-              <AddCircleOutlineIcon />
-            </IconButton>
           </Box>
-          {showAddType && (
-            <Box display="flex" alignItems="center" gap={1} mt={1} mb={2}>
-              <TextField
-                label="Новый тип пластика"
-                value={newType}
-                onChange={e => setNewType(e.target.value)}
-                size="small"
+        </Paper>
+        <Dialog open={open} onClose={() => setOpen(false)} fullWidth maxWidth="sm">
+          <DialogTitle>Добавить катушку</DialogTitle>
+          <DialogContent>
+            <Box display="flex" alignItems="center" gap={1}>
+              <Autocomplete
+                freeSolo
+                options={plasticTypes.map(t => ({ label: t.name, id: t.id }))}
+                value={
+                  form.plastic_type_id
+                    ? plasticTypes.find(t => t.id === form.plastic_type_id)?.name || ''
+                    : ''
+                }
+                onInputChange={(e, newInput) => {
+                  setForm(f => ({ ...f, plastic_type_id: newInput }));
+                }}
+                onChange={(e, newValue) => {
+                  if (typeof newValue === 'object' && newValue && newValue.id) {
+                    setForm(f => ({ ...f, plastic_type_id: newValue.id }));
+                  } else if (typeof newValue === 'string') {
+                    setForm(f => ({ ...f, plastic_type_id: newValue }));
+                  } else {
+                    setForm(f => ({ ...f, plastic_type_id: '' }));
+                  }
+                }}
+                renderInput={(params) => (
+                  <TextField {...params} label="Тип пластика" margin="normal" fullWidth />
+                )}
+                sx={{ flex: 1 }}
               />
-              <Button onClick={handleAddType} variant="outlined">Добавить</Button>
-              <Button onClick={() => setShowAddType(false)} size="small">Отмена</Button>
+              <IconButton size="small" onClick={() => setShowAddType(true)} sx={{ mt: 2 }}>
+                <AddCircleOutlineIcon />
+              </IconButton>
             </Box>
-          )}
-          <TextField label="Цвет" value={form.color} onChange={e => setForm(f => ({ ...f, color: e.target.value }))} fullWidth margin="normal" />
-          <TextField label="Вес (г)" type="number" value={form.weight_total} onChange={e => setForm(f => ({ ...f, weight_total: e.target.value }))} fullWidth margin="normal" />
-          <TextField label="Остаток (г)" type="number" value={form.weight_remaining} onChange={e => setForm(f => ({ ...f, weight_remaining: e.target.value }))} fullWidth margin="normal" helperText="Если не указано — будет равен весу" />
-          {role === 'admin' && (
+            {showAddType && (
+              <Box display="flex" alignItems="center" gap={1} mt={1} mb={2}>
+                <TextField
+                  label="Новый тип пластика"
+                  value={newType}
+                  onChange={e => setNewType(e.target.value)}
+                  size="small"
+                />
+                <Button onClick={handleAddType} variant="outlined">Добавить</Button>
+                <Button onClick={() => setShowAddType(false)} size="small">Отмена</Button>
+              </Box>
+            )}
+            <TextField label="Цвет" value={form.color} onChange={e => setForm(f => ({ ...f, color: e.target.value }))} fullWidth margin="normal" />
+            <TextField label="Вес (г)" type="number" value={form.weight_total} onChange={e => setForm(f => ({ ...f, weight_total: e.target.value }))} fullWidth margin="normal" />
+            <TextField label="Остаток (г)" type="number" value={form.weight_remaining} onChange={e => setForm(f => ({ ...f, weight_remaining: e.target.value }))} fullWidth margin="normal" helperText="Если не указано — будет равен весу" />
+            {role === 'admin' && (
+              <Autocomplete
+                freeSolo
+                options={groups.map(g => ({ label: g.name, id: g.id }))}
+                value={
+                  form.group_id
+                    ? groups.find(g => g.id === form.group_id)?.name || ''
+                    : ''
+                }
+                onInputChange={(e, newInput) => {
+                  setForm(f => ({ ...f, group_id: newInput }));
+                }}
+                onChange={(e, newValue) => {
+                  if (typeof newValue === 'object' && newValue && newValue.id) {
+                    setForm(f => ({ ...f, group_id: newValue.id }));
+                  } else if (typeof newValue === 'string') {
+                    setForm(f => ({ ...f, group_id: newValue }));
+                  } else {
+                    setForm(f => ({ ...f, group_id: '' }));
+                  }
+                }}
+                renderInput={(params) => (
+                  <TextField {...params} label="Группа" margin="normal" fullWidth />
+                )}
+              />
+            )}
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setOpen(false)}>Отмена</Button>
+            <Button onClick={handleCreate} variant="contained">Создать</Button>
+          </DialogActions>
+        </Dialog>
+
+        {/* Диалог быстрой траты пластика */}
+        <Dialog open={usageDialog.open} onClose={handleCloseUsage} fullWidth maxWidth="sm">
+          <DialogTitle>Потратить пластик</DialogTitle>
+          <DialogContent>
+            <Typography mb={1}>
+              Катушка #{usageDialog.spool?.id} — {plasticTypes.find(t => t.id === usageDialog.spool?.plastic_type_id)?.name || ''}, {usageDialog.spool?.color}
+            </Typography>
+            <TextField
+              label="Сколько потратить (г)"
+              type="number"
+              value={usageForm.amount_used}
+              onChange={e => setUsageForm(f => ({ ...f, amount_used: e.target.value }))}
+              fullWidth
+              margin="normal"
+            />
             <Autocomplete
               freeSolo
-              options={groups.map(g => ({ label: g.name, id: g.id }))}
+              options={projects
+                .filter(p => usageDialog.spool && p.group_id === usageDialog.spool.group_id)
+                .map(p => ({ label: p.name, id: p.id }))}
               value={
-                form.group_id
-                  ? groups.find(g => g.id === form.group_id)?.name || ''
+                usageForm.project_id
+                  ? projects.find(p => p.id === usageForm.project_id)?.name || ''
                   : ''
               }
               onInputChange={(e, newInput) => {
-                setForm(f => ({ ...f, group_id: newInput }));
+                setUsageForm(f => ({ ...f, project_id: newInput }));
               }}
               onChange={(e, newValue) => {
                 if (typeof newValue === 'object' && newValue && newValue.id) {
-                  setForm(f => ({ ...f, group_id: newValue.id }));
+                  setUsageForm(f => ({ ...f, project_id: newValue.id }));
                 } else if (typeof newValue === 'string') {
-                  setForm(f => ({ ...f, group_id: newValue }));
+                  setUsageForm(f => ({ ...f, project_id: newValue }));
                 } else {
-                  setForm(f => ({ ...f, group_id: '' }));
+                  setUsageForm(f => ({ ...f, project_id: '' }));
                 }
               }}
               renderInput={(params) => (
-                <TextField {...params} label="Группа" margin="normal" fullWidth />
+                <TextField {...params} label="Проект" margin="normal" fullWidth />
               )}
             />
-          )}
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setOpen(false)}>Отмена</Button>
-          <Button onClick={handleCreate} variant="contained">Создать</Button>
-        </DialogActions>
-      </Dialog>
+            <TextField
+              label="Цель использования"
+              value={usageForm.purpose}
+              onChange={e => setUsageForm(f => ({ ...f, purpose: e.target.value }))}
+              fullWidth
+              margin="normal"
+            />
+            {usageError && <Alert severity="error">{usageError}</Alert>}
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={handleCloseUsage}>Отмена</Button>
+            <Button onClick={handleUsage} variant="contained">Потратить</Button>
+          </DialogActions>
+        </Dialog>
 
-      {/* Диалог быстрой траты пластика */}
-      <Dialog open={usageDialog.open} onClose={handleCloseUsage} fullWidth maxWidth="sm">
-        <DialogTitle>Потратить пластик</DialogTitle>
-        <DialogContent>
-          <Typography mb={1}>
-            Катушка #{usageDialog.spool?.id} — {plasticTypes.find(t => t.id === usageDialog.spool?.plastic_type_id)?.name || ''}, {usageDialog.spool?.color}
-          </Typography>
-          <TextField
-            label="Сколько потратить (г)"
-            type="number"
-            value={usageForm.amount_used}
-            onChange={e => setUsageForm(f => ({ ...f, amount_used: e.target.value }))}
-            fullWidth
-            margin="normal"
-          />
-          <Autocomplete
-            freeSolo
-            options={projects
-              .filter(p => usageDialog.spool && p.group_id === usageDialog.spool.group_id)
-              .map(p => ({ label: p.name, id: p.id }))}
-            value={
-              usageForm.project_id
-                ? projects.find(p => p.id === usageForm.project_id)?.name || ''
-                : ''
-            }
-            onInputChange={(e, newInput) => {
-              setUsageForm(f => ({ ...f, project_id: newInput }));
-            }}
-            onChange={(e, newValue) => {
-              if (typeof newValue === 'object' && newValue && newValue.id) {
-                setUsageForm(f => ({ ...f, project_id: newValue.id }));
-              } else if (typeof newValue === 'string') {
-                setUsageForm(f => ({ ...f, project_id: newValue }));
-              } else {
-                setUsageForm(f => ({ ...f, project_id: '' }));
-              }
-            }}
-            renderInput={(params) => (
-              <TextField {...params} label="Проект" margin="normal" fullWidth />
-            )}
-          />
-          <TextField
-            label="Цель использования"
-            value={usageForm.purpose}
-            onChange={e => setUsageForm(f => ({ ...f, purpose: e.target.value }))}
-            fullWidth
-            margin="normal"
-          />
-          {usageError && <Alert severity="error">{usageError}</Alert>}
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleCloseUsage}>Отмена</Button>
-          <Button onClick={handleUsage} variant="contained">Потратить</Button>
-        </DialogActions>
-      </Dialog>
-
-      {/* Диалог подтверждения удаления катушки */}
-      <Dialog open={confirmDialog.open} onClose={cancelDelete} fullWidth maxWidth="sm">
-        <DialogTitle>Подтвердите удаление</DialogTitle>
-        <DialogContent>
-          <Typography>Вы уверены, что хотите удалить катушку "{confirmDialog.desc}"?</Typography>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={cancelDelete}>Отмена</Button>
-          <Button onClick={confirmDelete} color="error" variant="contained">Удалить</Button>
-        </DialogActions>
-      </Dialog>
+        {/* Диалог подтверждения удаления катушки */}
+        <Dialog open={confirmDialog.open} onClose={cancelDelete} fullWidth maxWidth="sm">
+          <DialogTitle>Подтвердите удаление</DialogTitle>
+          <DialogContent>
+            <Typography>Вы уверены, что хотите удалить катушку "{confirmDialog.desc}"?</Typography>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={cancelDelete}>Отмена</Button>
+            <Button onClick={confirmDelete} color="error" variant="contained">Удалить</Button>
+          </DialogActions>
+        </Dialog>
+      </Box>
     </Box>
   );
 }

@@ -86,64 +86,78 @@ export default function Groups() {
   };
 
   return (
-    <Box>
-      <Typography variant="h5" mb={2}>Группы</Typography>
-      {error && <Alert severity="error">{error}</Alert>}
-      {role === 'admin' && (
-        <Button variant="contained" onClick={() => setOpenGroup(true)} sx={{ mb: 2 }}>
-          Создать группу
-        </Button>
-      )}
-      <Dialog open={openGroup} onClose={() => setOpenGroup(false)}>
-        <DialogTitle>Создать группу</DialogTitle>
-        <DialogContent>
-          <TextField label="Название группы" value={groupName} onChange={e => setGroupName(e.target.value)} fullWidth margin="normal" />
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setOpenGroup(false)}>Отмена</Button>
-          <Button onClick={handleCreateGroup} variant="contained">Создать</Button>
-        </DialogActions>
-      </Dialog>
-      <Paper>
-        <Table>
-          <TableHead>
-            <TableRow>
-              <TableCell>ID</TableCell>
-              <TableCell>Название</TableCell>
-              {role === 'admin' && <TableCell>Действия</TableCell>}
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {groups.map(g => (
-              <TableRow key={g.id}>
-                <TableCell>{g.id}</TableCell>
-                <TableCell>{g.name}</TableCell>
-                {role === 'admin' && (
-                  <TableCell>
-                    <Button color="error" size="small" onClick={() => handleDeleteGroup(g.id)} sx={{mr:1}}>Удалить</Button>
-                    {g.is_active === 0 || g.is_active === false ? (
-                      <Button color="success" size="small" onClick={() => handleUnblockGroup(g.id)}>Разблокировать</Button>
-                    ) : (
-                      <Button color="warning" size="small" onClick={() => handleBlockGroup(g.id)}>Заблокировать</Button>
-                    )}
-                  </TableCell>
-                )}
+    <Box sx={{ maxWidth: 1200, width: '100%', p: 2, display: 'flex', justifyContent: 'center', mx: 'auto' }}>
+      <Box sx={{ width: '100%' }}>
+        <Typography variant="h5" mb={2} align="center" sx={{ fontWeight: 600 }}>
+          Группы
+        </Typography>
+        {error && <Alert severity="error">{error}</Alert>}
+        {role === 'admin' && (
+          <Button variant="contained" onClick={() => setOpenGroup(true)} sx={{ mb: 2 }}>
+            Создать группу
+          </Button>
+        )}
+        <Dialog open={openGroup} onClose={() => setOpenGroup(false)}>
+          <DialogTitle>Создать группу</DialogTitle>
+          <DialogContent>
+            <TextField label="Название группы" value={groupName} onChange={e => setGroupName(e.target.value)} fullWidth margin="normal" />
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setOpenGroup(false)}>Отмена</Button>
+            <Button onClick={handleCreateGroup} variant="contained">Создать</Button>
+          </DialogActions>
+        </Dialog>
+        <Paper sx={{ width: '100%' }}>
+          <Table sx={{ width: '100%', tableLayout: 'fixed' }}>
+            <TableHead>
+              <TableRow>
+                <TableCell sx={{ wordBreak: 'break-word' }}>ID</TableCell>
+                <TableCell sx={{ wordBreak: 'break-word' }}>Название</TableCell>
+                {role === 'admin' && <TableCell sx={{ wordBreak: 'break-word' }}>Действия</TableCell>}
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </Paper>
-      {/* Диалог подтверждения удаления группы */}
-      <Dialog open={confirmDialog.open} onClose={cancelDelete}>
-        <DialogTitle>Подтвердите удаление</DialogTitle>
-        <DialogContent>
-          <Typography>Вы уверены, что хотите удалить группу "{confirmDialog.name}"?</Typography>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={cancelDelete}>Отмена</Button>
-          <Button onClick={confirmDelete} color="error" variant="contained">Удалить</Button>
-        </DialogActions>
-      </Dialog>
+            </TableHead>
+            <TableBody>
+              {groups.map(g => (
+                <TableRow key={g.id}>
+                  <TableCell sx={{ wordBreak: 'break-word' }}>{g.id}</TableCell>
+                  <TableCell sx={{ wordBreak: 'break-word' }}>{g.name}</TableCell>
+                  {role === 'admin' && (
+                    <TableCell sx={{ wordBreak: 'break-word' }} align="center">
+                      <Box display="flex" flexDirection="column" gap={1} alignItems="stretch" justifyContent="center" textAlign="center" width="100%">
+                        <Button color="error" size="small" variant="contained" onClick={() => handleDeleteGroup(g.id)} sx={{ width: '100%', fontWeight: 600, py: 1, mb: 0.5 }}>
+                          Удалить
+                        </Button>
+                        {g.is_active === 0 || g.is_active === false ? (
+                          <Button color="success" size="small" variant="contained" onClick={() => handleUnblockGroup(g.id)} sx={{ width: '100%', fontWeight: 600, py: 1 }}>
+                            Разблокировать
+                          </Button>
+                        ) : (
+                          <Button color="warning" size="small" variant="contained" onClick={() => handleBlockGroup(g.id)} sx={{ width: '100%', fontWeight: 600, py: 1 }}>
+                            Заблокировать
+                          </Button>
+                        )}
+                      </Box>
+                    </TableCell>
+                  )}
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </Paper>
+        {/* Диалог подтверждения удаления группы */}
+        <Dialog open={confirmDialog.open} onClose={cancelDelete}>
+          <DialogTitle>Подтвердите удаление</DialogTitle>
+          <DialogContent>
+            <Typography>Вы уверены, что хотите удалить группу "{confirmDialog.name}"?</Typography>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={cancelDelete}>Отмена</Button>
+            <Button onClick={confirmDelete} color="error" variant="contained">
+              Удалить
+            </Button>
+          </DialogActions>
+        </Dialog>
+      </Box>
     </Box>
   );
 }

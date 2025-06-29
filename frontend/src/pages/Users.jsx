@@ -150,221 +150,235 @@ export default function Users() {
   const cancelDelete = () => setConfirmDialog({ open: false, id: null, name: '' });
 
   return (
-    <Box>
-      <Typography variant="h5" align="center" sx={{ mt: 3, mb: 3, fontWeight: 600 }}>
-        Пользователи
-      </Typography>
-      <Grid container spacing={2} alignItems="center" mb={3}>
-        <Grid item xs={12} md={4}>
-          <TextField
-            label="Поиск по таблице"
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            size="small"
-            fullWidth
-          />
-        </Grid>
-        {role === 'admin' && (
+    <Box sx={{ maxWidth: 1200, width: '100%', p: 2, display: 'flex', justifyContent: 'center', mx: 'auto' }}>
+      <Box sx={{ width: '100%' }}>
+        <Typography variant="h5" align="center" sx={{ mt: 3, mb: 3, fontWeight: 600 }}>
+          Пользователи
+        </Typography>
+        <Grid container spacing={2} alignItems="center" mb={3}>
           <Grid item xs={12} md={4}>
-            <Autocomplete
+            <TextField
+              label="Поиск по таблице"
+              value={search}
+              onChange={e => setSearch(e.target.value)}
               size="small"
-              options={[{ label: 'Все группы', id: 'all' }, ...groups.map(g => ({ label: g.name, id: g.id }))]}
-              value={
-                selectedGroup === 'all'
-                  ? { label: 'Все группы', id: 'all' }
-                  : groups.find(g => String(g.id) === String(selectedGroup))
-                    ? { label: groups.find(g => String(g.id) === String(selectedGroup)).name, id: selectedGroup }
-                    : { label: 'Все группы', id: 'all' }
-              }
-              onChange={(_, newValue) => {
-                setSelectedGroup(newValue ? newValue.id : 'all');
-              }}
-              renderInput={params => <TextField {...params} label="Группа" fullWidth />}
-              isOptionEqualToValue={(option, value) => String(option.id) === String(value.id)}
-              sx={{ minWidth: 180, maxWidth: 240 }}
+              fullWidth
             />
           </Grid>
-        )}
-        <Grid item xs={12} md={4}>
-          <Button variant="contained" onClick={() => setOpen(true)} fullWidth>Добавить пользователя</Button>
+          {role === 'admin' && (
+            <Grid item xs={12} md={4}>
+              <Autocomplete
+                size="small"
+                options={[{ label: 'Все группы', id: 'all' }, ...groups.map(g => ({ label: g.name, id: g.id }))]}
+                value={
+                  selectedGroup === 'all'
+                    ? { label: 'Все группы', id: 'all' }
+                    : groups.find(g => String(g.id) === String(selectedGroup))
+                      ? { label: groups.find(g => String(g.id) === String(selectedGroup)).name, id: selectedGroup }
+                      : { label: 'Все группы', id: 'all' }
+                }
+                onChange={(_, newValue) => {
+                  setSelectedGroup(newValue ? newValue.id : 'all');
+                }}
+                renderInput={params => <TextField {...params} label="Группа" fullWidth />}
+                isOptionEqualToValue={(option, value) => String(option.id) === String(value.id)}
+                sx={{ minWidth: 180, maxWidth: 240 }}
+              />
+            </Grid>
+          )}
+          <Grid item xs={12} md={4}>
+            <Button variant="contained" onClick={() => setOpen(true)} fullWidth>Добавить пользователя</Button>
+          </Grid>
         </Grid>
-      </Grid>
-      {error && <Alert severity="error">{error}</Alert>}
-      <Paper sx={{ mt: 2, mb: 3 }}>
-        <Table>
-          <TableHead>
-            <TableRow>
-              <TableCell>
-                <Box display="flex" alignItems="center">
-                  ID
-                  <IconButton size="small" onClick={() => setSort(s => ({ field: 'id', direction: s.field === 'id' && s.direction === 'asc' ? 'desc' : 'asc' }))}>
-                    {sort.field === 'id' ? (
-                      sort.direction === 'asc' ? <ArrowUpwardIcon fontSize="inherit" /> : <ArrowDownwardIcon fontSize="inherit" />
-                    ) : <ArrowUpwardIcon fontSize="inherit" sx={{ opacity: 0.3 }} />}
-                  </IconButton>
-                </Box>
-              </TableCell>
-              <TableCell>Имя</TableCell>
-              <TableCell>Роль</TableCell>
-              <TableCell>Группа</TableCell>
-              {(role === 'admin' || role === 'moderator') && <TableCell>Действия</TableCell>}
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {pagedUsers.map(u => (
-              <TableRow key={u.id}>
-                <TableCell>{u.id}</TableCell>
-                <TableCell>{u.username}</TableCell>
-                <TableCell>{u.role && u.role.name}</TableCell>
-                <TableCell>{u.group && u.group.name}</TableCell>
-                {(role === 'admin' || role === 'moderator') && (
-                  <TableCell>
-                    {((role === 'admin' && (u.role ? u.role.name !== 'admin' : true) && u.username !== localStorage.getItem('username')) ||
-                      (role === 'admin' && !u.role && u.username !== localStorage.getItem('username'))
-                    ) && (
-                      <>
-                        <Button color="error" size="small" onClick={() => handleDelete(u.id)}>
-                          Удалить
-                        </Button>
-                        {u.is_active === 0 ? (
-                          <Button color="success" size="small" onClick={async () => {
-                            try {
-                              await api.put(`/roles_groups/users/${u.id}/unblock`);
-                              fetchUsers();
-                            } catch {
-                              setError('Ошибка разблокировки пользователя');
-                            }
-                          }}>Разблокировать</Button>
-                        ) : (
-                          <Button color="warning" size="small" onClick={async () => {
-                            try {
-                              await api.put(`/roles_groups/users/${u.id}/block`);
-                              fetchUsers();
-                            } catch {
-                              setError('Ошибка блокировки пользователя');
-                            }
-                          }}>Заблокировать</Button>
-                        )}
-                      </>
-                    )}
-                    {role === 'moderator' && u.role && u.role.name === 'user' && u.username !== localStorage.getItem('username') && u.group && String(u.group.id) === String(form.group_id) && (
-                      <>
-                        <Button color="error" size="small" onClick={() => handleDelete(u.id)}>
-                          Удалить
-                        </Button>
-                        {u.is_active === 0 ? (
-                          <Button color="success" size="small" onClick={async () => {
-                            try {
-                              await api.put(`/roles_groups/users/${u.id}/unblock`);
-                              fetchUsers();
-                            } catch {
-                              setError('Ошибка разблокировки пользователя');
-                            }
-                          }}>Разблокировать</Button>
-                        ) : (
-                          <Button color="warning" size="small" onClick={async () => {
-                            try {
-                              await api.put(`/roles_groups/users/${u.id}/block`);
-                              fetchUsers();
-                            } catch {
-                              setError('Ошибка блокировки пользователя');
-                            }
-                          }}>Заблокировать</Button>
-                        )}
-                      </>
-                    )}
-                  </TableCell>
-                )}
+        {error && <Alert severity="error">{error}</Alert>}
+        <Paper sx={{ mt: 2, mb: 3, width: '100%' }}>
+          <Table sx={{ width: '100%', tableLayout: 'fixed' }}>
+            <TableHead>
+              <TableRow>
+                <TableCell sx={{ wordBreak: 'break-word' }}>
+                  <Box display="flex" alignItems="center">
+                    ID
+                    <IconButton size="small" onClick={() => setSort(s => ({ field: 'id', direction: s.field === 'id' && s.direction === 'asc' ? 'desc' : 'asc' }))}>
+                      {sort.field === 'id' ? (
+                        sort.direction === 'asc' ? <ArrowUpwardIcon fontSize="inherit" /> : <ArrowDownwardIcon fontSize="inherit" />
+                      ) : <ArrowUpwardIcon fontSize="inherit" sx={{ opacity: 0.3 }} />}
+                    </IconButton>
+                  </Box>
+                </TableCell>
+                <TableCell sx={{ wordBreak: 'break-word' }}>Имя</TableCell>
+                <TableCell sx={{ wordBreak: 'break-word' }}>Роль</TableCell>
+                <TableCell sx={{ wordBreak: 'break-word' }}>Группа</TableCell>
+                {(role === 'admin' || role === 'moderator') && <TableCell sx={{ wordBreak: 'break-word' }}>Действия</TableCell>}
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-        <Box display="flex" justifyContent="center" my={2}>
-          <Pagination
-            count={pageCount}
-            page={page}
-            onChange={(_, value) => setPage(value)}
-            color="primary"
-            shape="rounded"
-            showFirstButton
-            showLastButton
-          />
-        </Box>
-      </Paper>
-      <Dialog open={open} onClose={() => setOpen(false)}>
-        <DialogTitle>Добавить пользователя</DialogTitle>
-        <DialogContent>
-          <TextField label="Имя пользователя" value={form.username} onChange={e => setForm(f => ({ ...f, username: e.target.value }))} fullWidth margin="normal" />
-          <TextField label="Пароль" type="password" value={form.password} onChange={e => setForm(f => ({ ...f, password: e.target.value }))} fullWidth margin="normal" />
-          <Autocomplete
-            fullWidth
-            options={roles.map(r => ({ label: r.name, id: r.id }))}
-            value={
-              form.role_id
-                ? (roles.find(r => r.id === form.role_id)?.name || form.role_id)
-                : ''
-            }
-            onInputChange={(e, newInput) => {
-              setForm(f => ({ ...f, role_id: newInput }));
-            }}
-            onChange={(e, newValue) => {
-              if (typeof newValue === 'object' && newValue && typeof newValue.id !== 'undefined') {
-                setForm(f => ({ ...f, role_id: newValue.id }));
-              } else if (typeof newValue === 'string') {
-                setForm(f => ({ ...f, role_id: newValue }));
-              } else {
-                setForm(f => ({ ...f, role_id: '' }));
+            </TableHead>
+            <TableBody>
+              {pagedUsers.map(u => (
+                <TableRow key={u.id}>
+                  <TableCell sx={{ wordBreak: 'break-word' }}>{u.id}</TableCell>
+                  <TableCell sx={{ wordBreak: 'break-word' }}>{u.username}</TableCell>
+                  <TableCell sx={{ wordBreak: 'break-word' }}>{u.role && u.role.name}</TableCell>
+                  <TableCell sx={{ wordBreak: 'break-word' }}>{u.group && u.group.name}</TableCell>
+                  {(role === 'admin' || role === 'moderator') && (
+                    <TableCell sx={{ wordBreak: 'break-word' }} align="center">
+                      <Box display="flex" flexDirection="column" gap={1} alignItems="stretch" justifyContent="center" textAlign="center" width="100%">
+                        {((role === 'admin' && (u.role ? u.role.name !== 'admin' : true) && u.username !== localStorage.getItem('username')) ||
+                          (role === 'admin' && !u.role && u.username !== localStorage.getItem('username'))
+                        ) && (
+                          <>
+                            <Button color="error" size="small" variant="contained" onClick={() => handleDelete(u.id)} sx={{ width: '100%', fontWeight: 600, py: 1 }}>
+                              Удалить
+                            </Button>
+                            {u.is_active === 0 ? (
+                              <Button color="success" size="small" variant="contained" onClick={async () => {
+                                try {
+                                  await api.put(`/roles_groups/users/${u.id}/unblock`);
+                                  fetchUsers();
+                                } catch {
+                                  setError('Ошибка разблокировки пользователя');
+                                }
+                              }} sx={{ width: '100%', fontWeight: 600, py: 1 }}>
+                                Разблокировать
+                              </Button>
+                            ) : (
+                              <Button color="warning" size="small" variant="contained" onClick={async () => {
+                                try {
+                                  await api.put(`/roles_groups/users/${u.id}/block`);
+                                  fetchUsers();
+                                } catch {
+                                  setError('Ошибка блокировки пользователя');
+                                }
+                              }} sx={{ width: '100%', fontWeight: 600, py: 1 }}>
+                                Заблокировать
+                              </Button>
+                            )}
+                          </>
+                        )}
+                        {role === 'moderator' && u.role && u.role.name === 'user' && u.username !== localStorage.getItem('username') && u.group && String(u.group.id) === String(form.group_id) && (
+                          <>
+                            <Button color="error" size="small" variant="contained" onClick={() => handleDelete(u.id)} sx={{ width: '100%', fontWeight: 600, py: 1 }}>
+                              Удалить
+                            </Button>
+                            {u.is_active === 0 ? (
+                              <Button color="success" size="small" variant="contained" onClick={async () => {
+                                try {
+                                  await api.put(`/roles_groups/users/${u.id}/unblock`);
+                                  fetchUsers();
+                                } catch {
+                                  setError('Ошибка разблокировки пользователя');
+                                }
+                              }} sx={{ width: '100%', fontWeight: 600, py: 1 }}>
+                                Разблокировать
+                              </Button>
+                            ) : (
+                              <Button color="warning" size="small" variant="contained" onClick={async () => {
+                                try {
+                                  await api.put(`/roles_groups/users/${u.id}/block`);
+                                  fetchUsers();
+                                } catch {
+                                  setError('Ошибка блокировки пользователя');
+                                }
+                              }} sx={{ width: '100%', fontWeight: 600, py: 1 }}>
+                                Заблокировать
+                              </Button>
+                            )}
+                          </>
+                        )}
+                      </Box>
+                    </TableCell>
+                  )}
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+          <Box display="flex" justifyContent="center" my={2}>
+            <Pagination
+              count={pageCount}
+              page={page}
+              onChange={(_, value) => setPage(value)}
+              color="primary"
+              shape="rounded"
+              showFirstButton
+              showLastButton
+            />
+          </Box>
+        </Paper>
+        <Dialog open={open} onClose={() => setOpen(false)}>
+          <DialogTitle>Добавить пользователя</DialogTitle>
+          <DialogContent>
+            <TextField label="Имя пользователя" value={form.username} onChange={e => setForm(f => ({ ...f, username: e.target.value }))} fullWidth margin="normal" />
+            <TextField label="Пароль" type="password" value={form.password} onChange={e => setForm(f => ({ ...f, password: e.target.value }))} fullWidth margin="normal" />
+            <Autocomplete
+              fullWidth
+              options={roles.map(r => ({ label: r.name, id: r.id }))}
+              value={
+                form.role_id
+                  ? (roles.find(r => r.id === form.role_id)?.name || form.role_id)
+                  : ''
               }
-            }}
-            renderInput={params => (
-              <TextField {...params} label="Роль" margin="normal" fullWidth />
-            )}
-            disabled={role === 'moderator'}
-            sx={{ mb: 2 }}
-          />
-          <Autocomplete
-            fullWidth
-            options={groups.map(g => ({ label: g.name, id: g.id }))}
-            value={
-              form.group_id
-                ? (groups.find(g => g.id === form.group_id)?.name || form.group_id)
-                : ''
-            }
-            onInputChange={(e, newInput) => {
-              setForm(f => ({ ...f, group_id: newInput }));
-            }}
-            onChange={(e, newValue) => {
-              if (typeof newValue === 'object' && newValue && typeof newValue.id !== 'undefined') {
-                setForm(f => ({ ...f, group_id: newValue.id }));
-              } else if (typeof newValue === 'string') {
-                setForm(f => ({ ...f, group_id: newValue }));
-              } else {
-                setForm(f => ({ ...f, group_id: '' }));
+              onInputChange={(e, newInput) => {
+                setForm(f => ({ ...f, role_id: newInput }));
+              }}
+              onChange={(e, newValue) => {
+                if (typeof newValue === 'object' && newValue && typeof newValue.id !== 'undefined') {
+                  setForm(f => ({ ...f, role_id: newValue.id }));
+                } else if (typeof newValue === 'string') {
+                  setForm(f => ({ ...f, role_id: newValue }));
+                } else {
+                  setForm(f => ({ ...f, role_id: '' }));
+                }
+              }}
+              renderInput={params => (
+                <TextField {...params} label="Роль" margin="normal" fullWidth />
+              )}
+              disabled={role === 'moderator'}
+              sx={{ mb: 2 }}
+            />
+            <Autocomplete
+              fullWidth
+              options={groups.map(g => ({ label: g.name, id: g.id }))}
+              value={
+                form.group_id
+                  ? (groups.find(g => g.id === form.group_id)?.name || form.group_id)
+                  : ''
               }
-            }}
-            renderInput={params => (
-              <TextField {...params} label="Группа" margin="normal" fullWidth />
-            )}
-            disabled={role === 'moderator'}
-            sx={{ mb: 2 }}
-          />
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setOpen(false)}>Отмена</Button>
-          <Button onClick={handleCreate} variant="contained">Создать</Button>
-        </DialogActions>
-      </Dialog>
-      {/* Диалог подтверждения удаления пользователя */}
-      <Dialog open={confirmDialog.open} onClose={cancelDelete}>
-        <DialogTitle>Подтвердите удаление</DialogTitle>
-        <DialogContent>
-          <Typography>Вы уверены, что хотите удалить пользователя "{confirmDialog.name}"?</Typography>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={cancelDelete}>Отмена</Button>
-          <Button onClick={confirmDelete} color="error" variant="contained">Удалить</Button>
-        </DialogActions>
-      </Dialog>
+              onInputChange={(e, newInput) => {
+                setForm(f => ({ ...f, group_id: newInput }));
+              }}
+              onChange={(e, newValue) => {
+                if (typeof newValue === 'object' && newValue && typeof newValue.id !== 'undefined') {
+                  setForm(f => ({ ...f, group_id: newValue.id }));
+                } else if (typeof newValue === 'string') {
+                  setForm(f => ({ ...f, group_id: newValue }));
+                } else {
+                  setForm(f => ({ ...f, group_id: '' }));
+                }
+              }}
+              renderInput={params => (
+                <TextField {...params} label="Группа" margin="normal" fullWidth />
+              )}
+              disabled={role === 'moderator'}
+              sx={{ mb: 2 }}
+            />
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setOpen(false)}>Отмена</Button>
+            <Button onClick={handleCreate} variant="contained">Создать</Button>
+          </DialogActions>
+        </Dialog>
+        {/* Диалог подтверждения удаления пользователя */}
+        <Dialog open={confirmDialog.open} onClose={cancelDelete}>
+          <DialogTitle>Подтвердите удаление</DialogTitle>
+          <DialogContent>
+            <Typography>Вы уверены, что хотите удалить пользователя "{confirmDialog.name}"?</Typography>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={cancelDelete}>Отмена</Button>
+            <Button onClick={confirmDelete} color="error" variant="contained">
+              Удалить
+            </Button>
+          </DialogActions>
+        </Dialog>
+      </Box>
     </Box>
   );
 }
