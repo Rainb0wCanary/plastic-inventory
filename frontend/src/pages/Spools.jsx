@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import api from '../api/axios';
 import { fetchPlasticTypes, addPlasticType } from '../api/plasticTypes';
 import { Box, Typography, Button, Table, TableBody, TableCell, TableHead, TableRow, Paper, Dialog, DialogTitle, DialogContent, TextField, DialogActions, Alert, MenuItem, Select, InputLabel, FormControl, IconButton, Grid, Autocomplete } from '@mui/material';
@@ -158,6 +158,34 @@ export default function Spools() {
     }
   };
 
+  // Сброс страницы на первую при изменении поиска, группы или типа пластика
+  const isFirstRender = useRef(true);
+  const prevSearch = useRef(search);
+  const prevGroup = useRef(selectedGroup);
+  const prevType = useRef(selectedType);
+
+  useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      prevSearch.current = search;
+      prevGroup.current = selectedGroup;
+      prevType.current = selectedType;
+      return;
+    }
+    if (search !== prevSearch.current) {
+      setPage(1);
+      prevSearch.current = search;
+    }
+    if (selectedGroup !== prevGroup.current) {
+      setPage(1);
+      prevGroup.current = selectedGroup;
+    }
+    if (selectedType !== prevType.current) {
+      setPage(1);
+      prevType.current = selectedType;
+    }
+  }, [search, selectedGroup, selectedType]);
+
   // Фильтрация катушек по группе (только для админа)
   let filteredSpools = role === 'admin' && selectedGroup !== 'all'
     ? spools.filter(s => s.group_id === Number(selectedGroup))
@@ -280,11 +308,9 @@ export default function Spools() {
                   </IconButton>
                 </Box>
               </TableCell>
-              <TableCell>Тип</TableCell>
-              <TableCell>Цвет</TableCell>
               <TableCell>
                 <Box display="flex" alignItems="center">
-                  Вес (г)
+                  Общий вес (г)
                   <IconButton size="small" onClick={() => setSort(s => ({ field: 'weight_total', direction: s.field === 'weight_total' && s.direction === 'asc' ? 'desc' : 'asc' }))}>
                     {sort.field === 'weight_total' ? (
                       sort.direction === 'asc' ? <ArrowUpwardIcon fontSize="inherit" /> : <ArrowDownwardIcon fontSize="inherit" />

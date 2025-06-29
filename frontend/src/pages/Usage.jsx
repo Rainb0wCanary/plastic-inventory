@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import api from '../api/axios';
 import { fetchPlasticTypes } from '../api/plasticTypes';
 import { Box, Typography, Button, Table, TableBody, TableCell, TableHead, TableRow, Paper, Dialog, DialogTitle, DialogContent, TextField, DialogActions, Alert, Autocomplete, Grid, IconButton } from '@mui/material';
@@ -93,6 +93,7 @@ export default function Usage() {
     const plasticType = plasticTypes.find(t => t.id === (spool ? spool.plastic_type_id : null));
     const project = projects.find(p => p.id === u.project_id);
     const group = project ? groups.find(g => g.id === project.group_id)?.name || '' : '';
+    const user = users.find(user => user.id === u.user_id);
     const values = [
       String(u.id),
       spool && plasticType ? `${plasticType.name} ${spool.color}` : u.spool_id,
@@ -100,7 +101,8 @@ export default function Usage() {
       String(u.amount_used),
       u.purpose,
       new Date(u.timestamp).toLocaleString(),
-      group
+      group,
+      user ? user.username : '' // добавлено имя пользователя
     ].join(' ').toLowerCase();
     return values.includes(search.toLowerCase());
   });
@@ -119,6 +121,39 @@ export default function Usage() {
   const pagedUsages = sortedUsages.slice((page - 1) * rowsPerPage, page * rowsPerPage);
   const pageCount = Math.ceil(sortedUsages.length / rowsPerPage);
 
+  const isFirstRender = useRef(true);
+  const prevSearch = useRef(search);
+  const prevSpool = useRef(form.spool_id);
+  const prevProject = useRef(form.project_id);
+  const prevGroup = useRef(selectedGroup);
+
+  useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      prevSearch.current = search;
+      prevSpool.current = form.spool_id;
+      prevProject.current = form.project_id;
+      prevGroup.current = selectedGroup;
+      return;
+    }
+    if (search !== prevSearch.current) {
+      setPage(1);
+      prevSearch.current = search;
+    }
+    if (form.spool_id !== prevSpool.current) {
+      setPage(1);
+      prevSpool.current = form.spool_id;
+    }
+    if (form.project_id !== prevProject.current) {
+      setPage(1);
+      prevProject.current = form.project_id;
+    }
+    if (selectedGroup !== prevGroup.current) {
+      setPage(1);
+      prevGroup.current = selectedGroup;
+    }
+  }, [search, form.spool_id, form.project_id, selectedGroup]);
+
   return (
     <Box>
       <Typography variant="h5" align="center" sx={{ mt: 3, mb: 3, fontWeight: 600 }}>
@@ -129,7 +164,10 @@ export default function Usage() {
           <TextField
             label="Поиск по таблице"
             value={search}
-            onChange={e => setSearch(e.target.value)}
+            onChange={e => {
+              setSearch(e.target.value);
+              setPage(1); // Сброс на первую страницу при изменении поиска
+            }}
             size="small"
             fullWidth
           />
@@ -148,6 +186,7 @@ export default function Usage() {
               }
               onChange={(_, newValue) => {
                 setSelectedGroup(newValue ? newValue.id : 'all');
+                setPage(1); // Сброс на первую страницу при смене группы
               }}
               renderInput={params => <TextField {...params} label="Группа" fullWidth />}
               isOptionEqualToValue={(option, value) => String(option.id) === String(value.id)}
@@ -264,14 +303,18 @@ export default function Usage() {
             }
             onInputChange={(e, newInput) => {
               setForm(f => ({ ...f, spool_id: newInput }));
+              setPage(1); // Сброс на первую страницу при поиске по катушке
             }}
             onChange={(e, newValue) => {
               if (typeof newValue === 'object' && newValue && newValue.id) {
                 setForm(f => ({ ...f, spool_id: newValue.id }));
+                setPage(1);
               } else if (typeof newValue === 'string') {
                 setForm(f => ({ ...f, spool_id: newValue }));
+                setPage(1);
               } else {
                 setForm(f => ({ ...f, spool_id: '' }));
+                setPage(1);
               }
             }}
             renderInput={params => (
@@ -290,14 +333,18 @@ export default function Usage() {
             }
             onInputChange={(e, newInput) => {
               setForm(f => ({ ...f, project_id: newInput }));
+              setPage(1); // Сброс на первую страницу при поиске по проекту
             }}
             onChange={(e, newValue) => {
               if (typeof newValue === 'object' && newValue && typeof newValue.id !== 'undefined') {
                 setForm(f => ({ ...f, project_id: newValue.id }));
+                setPage(1); // Сброс на первую страницу при выборе проекта
               } else if (typeof newValue === 'string') {
                 setForm(f => ({ ...f, project_id: newValue }));
+                setPage(1);
               } else {
                 setForm(f => ({ ...f, project_id: '' }));
+                setPage(1);
               }
             }}
             renderInput={params => (

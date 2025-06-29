@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import api from '../api/axios';
 import { Box, Typography, Table, TableBody, TableCell, TableHead, TableRow, Paper, Alert, Button, Dialog, DialogTitle, DialogContent, DialogActions, TextField, Autocomplete, Grid, IconButton } from '@mui/material';
 import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
@@ -19,6 +19,9 @@ export default function Users() {
   const [selectedGroup, setSelectedGroup] = useState('all');
   const rowsPerPage = 10;
   const role = localStorage.getItem('role');
+  const isFirstRender = useRef(true);
+  const prevSearch = useRef(search);
+  const prevGroup = useRef(selectedGroup);
 
   // Универсальный поиск по таблице пользователей с учётом фильтра по группе
   let filteredUsers = users;
@@ -88,6 +91,23 @@ export default function Users() {
       });
     }
   }, [role]);
+
+  useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      prevSearch.current = search;
+      prevGroup.current = selectedGroup;
+      return;
+    }
+    if (search !== prevSearch.current) {
+      setPage(1);
+      prevSearch.current = search;
+    }
+    if (selectedGroup !== prevGroup.current) {
+      setPage(1);
+      prevGroup.current = selectedGroup;
+    }
+  }, [search, selectedGroup]);
 
   const handleCreate = async () => {
     setError('');

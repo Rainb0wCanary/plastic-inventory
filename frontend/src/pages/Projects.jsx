@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import api from '../api/axios';
 import { Box, Typography, Button, Table, TableBody, TableCell, TableHead, TableRow, Paper, Dialog, DialogTitle, DialogContent, TextField, DialogActions, Alert, Autocomplete, Grid, IconButton } from '@mui/material';
 import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
@@ -18,6 +18,9 @@ export default function Projects() {
   const [selectedGroup, setSelectedGroup] = useState('all');
   const rowsPerPage = 10;
   const role = localStorage.getItem('role');
+  const isFirstRender = useRef(true);
+  const prevSearch = useRef(search);
+  const prevGroup = useRef(selectedGroup);
 
   const fetchProjects = async () => {
     try {
@@ -106,6 +109,23 @@ export default function Projects() {
 
   const pagedProjects = sortedProjects.slice((page - 1) * rowsPerPage, page * rowsPerPage);
   const pageCount = Math.ceil(sortedProjects.length / rowsPerPage);
+
+  useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      prevSearch.current = search;
+      prevGroup.current = selectedGroup;
+      return;
+    }
+    if (search !== prevSearch.current) {
+      setPage(1);
+      prevSearch.current = search;
+    }
+    if (selectedGroup !== prevGroup.current) {
+      setPage(1);
+      prevGroup.current = selectedGroup;
+    }
+  }, [search, selectedGroup]);
 
   return (
     <Box>

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import api from '../api/axios';
 import { Box, Typography, Table, TableBody, TableCell, TableHead, TableRow, Paper, Alert, Button, Dialog, DialogTitle, DialogContent, DialogActions, TextField } from '@mui/material';
 
@@ -8,11 +8,14 @@ export default function Groups() {
   const [openGroup, setOpenGroup] = useState(false);
   const [groupName, setGroupName] = useState('');
   const [confirmDialog, setConfirmDialog] = useState({ open: false, id: null, name: '' });
+  const [search, setSearch] = useState('');
+  const [page, setPage] = useState(1);
   const role = localStorage.getItem('role');
+  const isFirstRender = useRef(true);
+  const prevSearch = useRef(search);
 
   const fetchGroups = async () => {
     try {
-      // Предполагается, что есть эндпоинт /roles_groups/groups/ только для админа
       const res = await api.get('/roles_groups/groups/');
       setGroups(res.data);
     } catch {
@@ -21,6 +24,18 @@ export default function Groups() {
   };
 
   useEffect(() => { fetchGroups(); }, []);
+
+  useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      prevSearch.current = search;
+      return;
+    }
+    if (search !== prevSearch.current) {
+      setPage(1);
+      prevSearch.current = search;
+    }
+  }, [search]);
 
   const handleCreateGroup = async () => {
     setError('');
