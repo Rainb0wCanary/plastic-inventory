@@ -13,8 +13,7 @@ ensure_default_roles()
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],
-    allow_credentials=True,
+    allow_origins=["http://frontend:80", "http://localhost:8080","http://localhost:5173",], # *
     allow_methods=["*"],
     allow_headers=["*"],
 )
