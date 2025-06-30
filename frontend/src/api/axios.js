@@ -1,6 +1,7 @@
 import axios from 'axios';
 
-const API_URL = '/api'; // Используем относительный путь для проксирования через nginx
+// Используем переменную окружения VITE_API_URL, если она есть, иначе fallback на '/api'
+const API_URL = import.meta.env.VITE_API_URL || '/api';
 
 const api = axios.create({
   baseURL: API_URL,

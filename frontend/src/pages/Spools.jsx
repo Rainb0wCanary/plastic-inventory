@@ -30,7 +30,7 @@ export default function Spools() {
   const [page, setPage] = useState(1);
   const rowsPerPage = 10;
   const role = localStorage.getItem('role');
-  const API_URL = "/api"; // Используем относительный путь для Docker
+  const API_URL = import.meta.env.VITE_API_URL || '/api'; // Используем переменную окружения
 
   const fetchSpools = async () => {
     try {
@@ -356,7 +356,7 @@ useEffect(() => {
                   <TableCell>
                     {spool.qr_code_path ? (
                       <img
-                        src={API_URL + spool.qr_code_path + '?v=' + Date.now()}
+                        src={spool.qr_code_path + '?v=' + Date.now()}
                         alt={spool.qr_code_path}
                         width={80}
                         style={{ border: '1px solid red', verticalAlign: 'middle', maxWidth: '100%' }}
