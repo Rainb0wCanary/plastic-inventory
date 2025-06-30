@@ -34,3 +34,9 @@ from fastapi import Depends
 @app.get("/groups/", response_model=list[roles_groups.GroupOut])
 def proxy_groups(db: roles_groups.Session = Depends(roles_groups.get_db), current_user: roles_groups.User = Depends(roles_groups.get_current_user)):
     return get_groups(db, current_user)
+
+if __name__ == "__main__":
+    import os
+    import uvicorn
+    port = int(os.environ.get("PORT", 8000))
+    uvicorn.run("main:app", host="0.0.0.0", port=port)
