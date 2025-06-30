@@ -1,11 +1,24 @@
-FROM node:20 AS build
-WORKDIR /app
-COPY . .
-RUN npm ci && npm run build
+# Этап 1: сборка фронтенда
+FROM node:20-alpine AS build
 
-FROM nginx:1.25-alpine
-COPY --from=build /app/dist /usr/share/nginx/html
+WORKDIR /app
+
+COPY package.json package-lock.json* ./
+RUN npm ci
+
+COPY . .
+RUN npm run build
+
+
+# Этап 2: запуск через nginx
+FROM nginx:alpine
+
+# Копируем наш Nginx конфиг
 COPY nginx.conf /etc/nginx/nginx.conf
 
-EXPOSE 8080
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8080"]
+# Копируем собранные файлы из Vite
+COPY --from=build /app/dist /usr/share/nginx/html
+
+EXPOSE 80
+
+CMD ["nginx", "-g", "daemon off;"]
