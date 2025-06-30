@@ -238,7 +238,9 @@ export default function Usage() {
                     </IconButton>
                   </Box>
                 </TableCell>
-                <TableCell sx={{ wordBreak: 'break-word' }}>Пользователь</TableCell>
+                {localStorage.getItem('role') !== 'user' && (
+                  <TableCell sx={{ wordBreak: 'break-word' }}>Пользователь</TableCell>
+                )}
                 <TableCell sx={{ wordBreak: 'break-word', whiteSpace: 'nowrap', minWidth: 110 }}>Действия</TableCell>
               </TableRow>
             </TableHead>
@@ -257,7 +259,9 @@ export default function Usage() {
                     <TableCell sx={{ wordBreak: 'break-word' }}>{u.amount_used}</TableCell>
                     <TableCell sx={{ wordBreak: 'break-word' }}>{u.purpose}</TableCell>
                     <TableCell sx={{ wordBreak: 'break-word' }}>{new Date(u.timestamp).toLocaleString()}</TableCell>
-                    <TableCell sx={{ wordBreak: 'break-word' }}>{users.find(user => user.id === u.user_id)?.username || '—'}</TableCell>
+                    {localStorage.getItem('role') !== 'user' && (
+                      <TableCell sx={{ wordBreak: 'break-word' }}>{users.find(user => user.id === u.user_id)?.username || '—'}</TableCell>
+                    )}
                     <TableCell sx={{ whiteSpace: 'nowrap', minWidth: 110 }}>
                       <Button color="error" size="small" variant="contained" onClick={() => handleDelete(u.id)}>
                         Удалить
