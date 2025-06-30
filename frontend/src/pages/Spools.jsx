@@ -30,7 +30,7 @@ export default function Spools() {
   const [page, setPage] = useState(1);
   const rowsPerPage = 10;
   const role = localStorage.getItem('role');
-  const API_URL = "http://localhost:8000";
+  const API_URL = "/api"; // Используем относительный путь для Docker
 
   const fetchSpools = async () => {
     try {
@@ -44,7 +44,7 @@ export default function Spools() {
   const fetchTypes = async () => {
     try {
       const types = await fetchPlasticTypes();
-      setPlasticTypes(types);
+      setPlasticTypes(Array.isArray(types) ? types : []);
     } catch {
       setPlasticTypes([]);
     }
@@ -191,9 +191,10 @@ useEffect(() => {
   }, [search, selectedGroup, selectedType]);
 
   // Фильтрация катушек по группе (только для админа)
-  let filteredSpools = role === 'admin' && selectedGroup !== 'all'
-    ? spools.filter(s => s.group_id === Number(selectedGroup))
-    : spools;
+  let filteredSpools = Array.isArray(spools) ? spools : [];
+  if (role === 'admin' && selectedGroup !== 'all') {
+    filteredSpools = filteredSpools.filter(s => s.group_id === Number(selectedGroup));
+  }
 
   // Фильтр по типу пластика
   if (selectedType !== 'all') {

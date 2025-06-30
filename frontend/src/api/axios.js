@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_URL = 'http://localhost:8000'; // Укажите адрес вашего backend
+const API_URL = '/api'; // Используем относительный путь для проксирования через nginx
 
 const api = axios.create({
   baseURL: API_URL,

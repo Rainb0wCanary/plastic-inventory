@@ -12,72 +12,57 @@ export default function QrScanDialog({ open, onClose, onResult }) {
   const qrRef = useRef();
   const html5QrCodeRef = useRef();
 
+  // Остановка камеры
+  const stopCamera = async () => {
+    if (html5QrCodeRef.current) {
+      try {
+        if (html5QrCodeRef.current._isScanning) {
+          await html5QrCodeRef.current.stop();
+        }
+        await html5QrCodeRef.current.clear();
+      } catch (e) {}
+      html5QrCodeRef.current = null;
+    }
+    // Очищаем DOM div с камерой
+    if (qrRef.current) {
+      qrRef.current.innerHTML = '';
+    }
+  };
+
   // Сканирование с камеры
   useEffect(() => {
     let isActive = true;
-    // Если окно не открыто или не выбран таб "Камера", ничего не делаем
     if (!open || tab !== 0) {
-      // Останавливаем камеру, если она вдруг работает
-      if (html5QrCodeRef.current) {
-        html5QrCodeRef.current.stop().catch(() => {});
-        html5QrCodeRef.current = null;
-      }
+      stopCamera();
       return;
     }
-
-    // Ждем появления DOM-элемента (qrRef.current)
-    if (!qrRef.current) {
-      // Пробуем повторно через небольшой таймаут (DOM может не успеть появиться)
-      const timer = setTimeout(() => {
-        if (open && tab === 0 && qrRef.current) {
-          setError('');
-          html5QrCodeRef.current = new Html5Qrcode(qrRef.current.id);
-          html5QrCodeRef.current.start(
-            { facingMode: "environment" },
-            { fps: 10, qrbox: 250 },
-            (decodedText) => {
-              setError('');
-              onResult(decodedText);
-              if (isActive && html5QrCodeRef.current) {
-                html5QrCodeRef.current.stop().catch(() => {});
-                html5QrCodeRef.current = null;
-              }
-              onClose();
-            },
-            (err) => {
-              if (err && !err.toString().includes('NotFoundException')) setError('Ошибка камеры: ' + err);
+    // Перед созданием нового экземпляра — стоп и очистка
+    stopCamera().then(() => {
+      setError('');
+      if (qrRef.current) {
+        html5QrCodeRef.current = new Html5Qrcode(qrRef.current.id);
+        html5QrCodeRef.current.start(
+          { facingMode: "environment" },
+          { fps: 10, qrbox: 250 },
+          (decodedText) => {
+            setError('');
+            onResult(decodedText);
+            if (isActive && html5QrCodeRef.current) {
+              html5QrCodeRef.current.stop().catch(() => {});
+              html5QrCodeRef.current.clear().catch(() => {});
+              html5QrCodeRef.current = null;
             }
-          );
-        }
-      }, 100);
-      return () => clearTimeout(timer);
-    }
-
-    setError('');
-    html5QrCodeRef.current = new Html5Qrcode(qrRef.current.id);
-    html5QrCodeRef.current.start(
-      { facingMode: "environment" },
-      { fps: 10, qrbox: 250 },
-      (decodedText) => {
-        setError('');
-        onResult(decodedText);
-        if (isActive && html5QrCodeRef.current) {
-          html5QrCodeRef.current.stop().catch(() => {});
-          html5QrCodeRef.current = null;
-        }
-        onClose();
-      },
-      (err) => {
-        if (err && !err.toString().includes('NotFoundException')) setError('Ошибка камеры: ' + err);
+            onClose();
+          },
+          (err) => {
+            if (err && !err.toString().includes('NotFoundException')) setError('Ошибка камеры: ' + err);
+          }
+        );
       }
-    );
-
+    });
     return () => {
       isActive = false;
-      if (html5QrCodeRef.current) {
-        html5QrCodeRef.current.stop().catch(() => {});
-        html5QrCodeRef.current = null;
-      }
+      stopCamera();
     };
     // Ключевой момент: qrRef.current в зависимостях!
   }, [open, tab, qrRef.current]);
@@ -104,11 +89,7 @@ export default function QrScanDialog({ open, onClose, onResult }) {
 
   // Корректное закрытие диалога и остановка сканера
   const handleClose = (...args) => {
-    if (html5QrCodeRef.current) {
-      html5QrCodeRef.current.stop().catch(() => {});
-      html5QrCodeRef.current = null;
-    }
-    onClose(...args);
+    stopCamera().then(() => onClose(...args));
   };
 
   return (
