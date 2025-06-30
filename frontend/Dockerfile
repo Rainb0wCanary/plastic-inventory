@@ -1,20 +1,23 @@
-# Stage 1: Build React app with Vite
-FROM node:18-alpine AS build
+# Этап 1: сборка фронтенда
+FROM node:20-alpine AS build
 
 WORKDIR /app
 
-COPY frontend/package*.json ./
+COPY package.json package-lock.json* ./
 RUN npm ci
 
-COPY frontend/ ./
+COPY . .
 RUN npm run build
 
-# Stage 2: Serve with nginx
+
+# Этап 2: запуск через nginx
 FROM nginx:alpine
 
-COPY --from=build /app/dist /usr/share/nginx/html
+# Копируем наш Nginx конфиг
+COPY nginx.conf /etc/nginx/nginx.conf
 
-COPY frontend/nginx.conf /etc/nginx/nginx.conf
+# Копируем собранные файлы из Vite
+COPY --from=build /app/dist /usr/share/nginx/html
 
 EXPOSE 80
 
