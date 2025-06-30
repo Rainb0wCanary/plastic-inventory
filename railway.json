@@ -1,0 +1,11 @@
+{
+  "builds": [
+    { "src": "frontend/dist", "use": "@railway/static" }
+  ],
+  "static": {
+    "public": "frontend/dist",
+    "rewrites": [
+      { "source": "/(.*)", "destination": "/index.html" }
+    ]
+  }
+}
