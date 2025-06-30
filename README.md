@@ -63,7 +63,7 @@ plastic-inventory/
    ```sh
    uvicorn main:app --reload
    ```
-   Сервер будет доступен по адресу http://localhost:8000
+   Сервер будет доступен по адресу http://127.0.0.1:8000 
 
 ---
 
@@ -128,5 +128,3 @@ plastic-inventory/
 
 ---
 
-## Контакты
-- Вопросы и предложения: [ваш email или github]

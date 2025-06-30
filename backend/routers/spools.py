@@ -166,3 +166,11 @@ def add_type(data: dict, db: Session = Depends(get_db), current_user: User = Dep
     db.commit()
     db.refresh(new_type)
     return {"id": new_type.id, "name": new_type.name}
+
+# Получить информацию о катушке по id
+@router.get("/{spool_id}", response_model=SpoolOut)
+def get_spool(spool_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    spool = db.query(Spool).filter(Spool.id == spool_id).first()
+    if not spool:
+        raise HTTPException(status_code=404, detail="Катушка не найдена")
+    return spool

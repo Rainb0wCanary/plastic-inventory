@@ -57,7 +57,11 @@ export default function Spools() {
       .then(res => setProjects(res.data))
       .catch(() => setProjects([]));
   }, []);
-
+useEffect(() => {
+  const handler = () => fetchSpools();
+  window.addEventListener('spools-updated', handler);
+  return () => window.removeEventListener('spools-updated', handler);
+}, []);
   useEffect(() => {
     api.get('/groups/')
       .then(res => setGroups(res.data))
