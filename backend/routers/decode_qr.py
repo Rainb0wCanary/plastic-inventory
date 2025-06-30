@@ -6,6 +6,7 @@ import hmac
 import hashlib
 import os
 from dotenv import load_dotenv
+from .spools import get_current_user
 
 router = APIRouter()
 
@@ -16,7 +17,7 @@ class QRRequest(BaseModel):
     qr: str
 
 @router.post("/decode_qr")
-def decode_qr(data: QRRequest):
+def decode_qr(data: QRRequest, current_user=Depends(get_current_user)):
     try:
         payload, signature = data.qr.split('.')
         # Проверка подписи (безопасно, если используется)

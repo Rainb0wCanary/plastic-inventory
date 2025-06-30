@@ -168,9 +168,23 @@ def add_type(data: dict, db: Session = Depends(get_db), current_user: User = Dep
     return {"id": new_type.id, "name": new_type.name}
 
 # Получить информацию о катушке по id
-@router.get("/{spool_id}", response_model=SpoolOut)
+@router.get("/{spool_id}")
 def get_spool(spool_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     spool = db.query(Spool).filter(Spool.id == spool_id).first()
     if not spool:
         raise HTTPException(status_code=404, detail="Катушка не найдена")
-    return spool
+    # Получаем объекты типа пластика и группы
+    plastic_type = db.query(PlasticType).filter(PlasticType.id == spool.plastic_type_id).first()
+    group = db.query(Group).filter(Group.id == spool.group_id).first() if spool.group_id else None
+    # Формируем расширенный ответ
+    return {
+        "id": spool.id,
+        "plastic_type_id": spool.plastic_type_id,
+        "color": spool.color,
+        "weight_total": spool.weight_total,
+        "weight_remaining": spool.weight_remaining,
+        "qr_code_path": spool.qr_code_path,
+        "group_id": spool.group_id,
+        "plastic_type": {"id": plastic_type.id, "name": plastic_type.name} if plastic_type else None,
+        "group": {"id": group.id, "name": group.name} if group else None
+    }

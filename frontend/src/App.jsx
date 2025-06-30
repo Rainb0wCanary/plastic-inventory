@@ -143,8 +143,8 @@ function App() {
         open={spoolDialog.open}
         onClose={() => setSpoolDialog({ open: false, spool: null, error: '' })}
         spool={spoolDialog.spool}
-        group={spoolDialog.spool ? (groups?.find(g => g.id === spoolDialog.spool.group_id) || null) : null}
-        plasticType={spoolDialog.spool ? (plasticTypes?.find(t => t.id === spoolDialog.spool.plastic_type_id) || null) : null}
+        group={spoolDialog.spool ? (spoolDialog.spool.group || null) : null}
+        plasticType={spoolDialog.spool ? (spoolDialog.spool.plastic_type || null) : null}
         error={spoolDialog.error}
         projects={projects}
         onDelete={async () => {
