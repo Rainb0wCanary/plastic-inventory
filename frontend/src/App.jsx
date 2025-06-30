@@ -1,8 +1,6 @@
 import { Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { CircularProgress, CssBaseline, AppBar, Toolbar, Button, Box } from '@mui/material';
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
 import './App.css'
 import Login from './pages/Login';
 import Spools from './pages/Spools';
