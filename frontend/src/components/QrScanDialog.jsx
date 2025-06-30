@@ -1,68 +1,121 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Dialog, DialogTitle, DialogContent, DialogActions, Button, Tabs, Tab, Box, Typography, Alert } from '@mui/material';
-import { QrReader } from 'react-qr-reader';
-import jsQR from 'jsqr';
 import CameraAltIcon from '@mui/icons-material/CameraAlt';
 import PhotoCameraIcon from '@mui/icons-material/PhotoCamera';
+import { Html5Qrcode } from 'html5-qrcode';
 
 export default function QrScanDialog({ open, onClose, onResult }) {
   const [tab, setTab] = useState(0);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const fileInputRef = useRef();
+  const qrRef = useRef();
+  const html5QrCodeRef = useRef();
 
-  // Обработка результата с камеры
-  const handleScan = data => {
-    if (data) {
-      setError('');
-      onResult(data);
-      onClose();
+  // Сканирование с камеры
+  useEffect(() => {
+    let isActive = true;
+    // Если окно не открыто или не выбран таб "Камера", ничего не делаем
+    if (!open || tab !== 0) {
+      // Останавливаем камеру, если она вдруг работает
+      if (html5QrCodeRef.current) {
+        html5QrCodeRef.current.stop().catch(() => {});
+        html5QrCodeRef.current = null;
+      }
+      return;
     }
-  };
-  const handleError = err => {
-    setError('Ошибка камеры: ' + err.message);
-  };
 
-  // Обработка загрузки файла
+    // Ждем появления DOM-элемента (qrRef.current)
+    if (!qrRef.current) {
+      // Пробуем повторно через небольшой таймаут (DOM может не успеть появиться)
+      const timer = setTimeout(() => {
+        if (open && tab === 0 && qrRef.current) {
+          setError('');
+          html5QrCodeRef.current = new Html5Qrcode(qrRef.current.id);
+          html5QrCodeRef.current.start(
+            { facingMode: "environment" },
+            { fps: 10, qrbox: 250 },
+            (decodedText) => {
+              setError('');
+              onResult(decodedText);
+              if (isActive && html5QrCodeRef.current) {
+                html5QrCodeRef.current.stop().catch(() => {});
+                html5QrCodeRef.current = null;
+              }
+              onClose();
+            },
+            (err) => {
+              if (err && !err.toString().includes('NotFoundException')) setError('Ошибка камеры: ' + err);
+            }
+          );
+        }
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+
+    setError('');
+    html5QrCodeRef.current = new Html5Qrcode(qrRef.current.id);
+    html5QrCodeRef.current.start(
+      { facingMode: "environment" },
+      { fps: 10, qrbox: 250 },
+      (decodedText) => {
+        setError('');
+        onResult(decodedText);
+        if (isActive && html5QrCodeRef.current) {
+          html5QrCodeRef.current.stop().catch(() => {});
+          html5QrCodeRef.current = null;
+        }
+        onClose();
+      },
+      (err) => {
+        if (err && !err.toString().includes('NotFoundException')) setError('Ошибка камеры: ' + err);
+      }
+    );
+
+    return () => {
+      isActive = false;
+      if (html5QrCodeRef.current) {
+        html5QrCodeRef.current.stop().catch(() => {});
+        html5QrCodeRef.current = null;
+      }
+    };
+    // Ключевой момент: qrRef.current в зависимостях!
+  }, [open, tab, qrRef.current]);
+
+  // Сканирование с фото
   const handleFileChange = async e => {
     setError('');
     setLoading(true);
     const file = e.target.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = ev => {
-      const img = new window.Image();
-      img.onload = () => {
-        const canvas = document.createElement('canvas');
-        canvas.width = img.width;
-        canvas.height = img.height;
-        const ctx = canvas.getContext('2d');
-        ctx.drawImage(img, 0, 0, img.width, img.height);
-        const imageData = ctx.getImageData(0, 0, img.width, img.height);
-        const code = jsQR(imageData.data, img.width, img.height);
-        if (code) {
-          setError('');
-          onResult(code.data);
-          onClose();
-        } else {
-          setError('QR-код не найден на изображении');
-        }
-        setLoading(false);
-      };
-      img.onerror = () => {
-        setError('Ошибка загрузки изображения');
-        setLoading(false);
-      };
-      img.src = ev.target.result;
-    };
-    reader.readAsDataURL(file);
+    if (!file) {
+      setLoading(false);
+      return;
+    }
+    try {
+      const html5QrCode = new Html5Qrcode("qr-reader-file");
+      const result = await html5QrCode.scanFile(file, true);
+      onResult(result);
+      onClose();
+    } catch (err) {
+      setError('QR-код не найден на изображении');
+    }
+    setLoading(false);
+  };
+
+  // Корректное закрытие диалога и остановка сканера
+  const handleClose = (...args) => {
+    if (html5QrCodeRef.current) {
+      html5QrCodeRef.current.stop().catch(() => {});
+      html5QrCodeRef.current = null;
+    }
+    onClose(...args);
   };
 
   return (
     <Dialog 
       open={open} 
       onClose={(event, reason) => {
-        if (reason !== 'backdropClick') onClose();
+        if (reason !== 'backdropClick') handleClose();
       }} 
       maxWidth="xs" 
       fullWidth 
@@ -82,21 +135,7 @@ export default function QrScanDialog({ open, onClose, onResult }) {
         <Box mt={1} mb={2} display="flex" flexDirection="column" alignItems="center">
           {tab === 0 && (
             <Box width="100%" display="flex" flexDirection="column" alignItems="center">
-              <Box sx={{ borderRadius: 2, overflow: 'hidden', boxShadow: 2, width: '100%', maxWidth: 320, mb: 1 }}>
-                <QrReader
-                  constraints={{ facingMode: 'environment' }}
-                  onResult={(result, error) => {
-                    if (result?.text) {
-                      setError('');
-                      onResult(result.text);
-                      onClose();
-                    } else if (error && error.name !== 'NotFoundException') {
-                      setError('Ошибка камеры: ' + error.message);
-                    }
-                  }}
-                  style={{ width: '100%' }}
-                />
-              </Box>
+              <div id="qr-reader" ref={qrRef} style={{ width: 300, height: 300, margin: '0 auto' }} />
               <Typography variant="body2" color="textSecondary" mt={1}>
                 Наведите камеру на QR-код
               </Typography>
@@ -123,13 +162,14 @@ export default function QrScanDialog({ open, onClose, onResult }) {
                 />
               </Button>
               {loading && <Typography mt={1}>Распознавание...</Typography>}
+              <div id="qr-reader-file" style={{ display: 'none' }} />
             </Box>
           )}
           {error && <Alert severity="error" sx={{ mt: 2, width: '100%' }}>{error}</Alert>}
         </Box>
       </DialogContent>
       <DialogActions sx={{ justifyContent: 'center', pb: 2 }}>
-        <Button onClick={onClose} variant="outlined" color="inherit" sx={{ borderRadius: 2, fontWeight: 600, px: 4 }}>
+        <Button onClick={handleClose} variant="outlined" color="inherit" sx={{ borderRadius: 2, fontWeight: 600, px: 4 }}>
           Закрыть
         </Button>
       </DialogActions>
