@@ -1,11 +1,21 @@
 {
-  "builds": [
-    { "src": "frontend/dist", "use": "@railway/static" }
-  ],
-  "static": {
-    "public": "frontend/dist",
-    "rewrites": [
-      { "source": "/(.*)", "destination": "/index.html" }
-    ]
-  }
+  "services": [
+    {
+      "name": "frontend",
+      "build": {
+        "dockerfilePath": "./frontend/Dockerfile"
+      },
+      "port": 80
+    },
+    {
+      "name": "backend",
+      "build": {
+        "dockerfilePath": "./backend/Dockerfile"
+      },
+      "env": {
+        "PORT": "8000"
+      },
+      "port": 8000
+    }
+  ]
 }

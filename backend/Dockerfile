@@ -1,16 +1,16 @@
-# Dockerfile для FastAPI backend с автоматическим запуском init_db.py после старта uvicorn
-FROM python:3.12-slim
+FROM python:3.11-slim
 
 WORKDIR /app
 
-COPY . /app
+COPY backend/requirements.txt .
 
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Копируем скрипт запуска
-COPY entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh
+COPY backend/ ./
+
+# (Опционально) инициализация базы данных
+# RUN python init_db.py
 
 EXPOSE 8000
 
-ENTRYPOINT ["/entrypoint.sh"]
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
