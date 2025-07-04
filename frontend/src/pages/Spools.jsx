@@ -50,12 +50,31 @@ export default function Spools() {
     }
   };
 
+  // --- ДОБАВЛЯЕМ СОСТОЯНИЯ ДЛЯ ПРОИЗВОДИТЕЛЯ ---
+  const [manufacturers, setManufacturers] = useState([]);
+  const [showAddManufacturer, setShowAddManufacturer] = useState(false);
+  const [newManufacturer, setNewManufacturer] = useState({ name: '', info: '', empty_spool_weight: '' });
+
+  // --- ЗАГРУЗКА ПРОИЗВОДИТЕЛЕЙ ---
+  const fetchManufacturers = async () => {
+    try {
+      const res = await api.get('/manufacturers/');
+      setManufacturers(res.data);
+      console.log('Загруженные производители:', res.data);
+    } catch (e) {
+      setManufacturers([]);
+      setError('Ошибка загрузки производителей: ' + (e?.response?.data?.detail || e.message || e));
+      console.error('Ошибка загрузки производителей:', e);
+    }
+  };
+
   useEffect(() => {
     fetchSpools();
     fetchTypes();
     api.get('/projects/')
       .then(res => setProjects(res.data))
       .catch(() => setProjects([]));
+    fetchManufacturers();
   }, []);
 useEffect(() => {
   const handler = () => fetchSpools();
@@ -101,6 +120,22 @@ useEffect(() => {
       setNewType('');
     } catch {
       setError('Ошибка добавления типа пластика');
+    }
+  };
+
+  const handleAddManufacturer = async () => {
+    try {
+      const res = await api.post('/manufacturers/', {
+        name: newManufacturer.name,
+        info: newManufacturer.info,
+        empty_spool_weight: Number(newManufacturer.empty_spool_weight)
+      });
+      setManufacturers([...manufacturers, res.data]);
+      setForm(f => ({ ...f, manufacturer_id: res.data.id }));
+      setShowAddManufacturer(false);
+      setNewManufacturer({ name: '', info: '', empty_spool_weight: '' });
+    } catch {
+      setError('Ошибка добавления производителя');
     }
   };
 
@@ -210,13 +245,15 @@ useEffect(() => {
   const searchedSpools = filteredSpools.filter(spool => {
     const type = plasticTypes.find(t => t.id === spool.plastic_type_id)?.name || '';
     const group = groups.find(g => Number(g.id) === Number(spool.group_id))?.name || '';
+    const manufacturer = spool.manufacturer_name || manufacturers.find(m => m.id === spool.manufacturer_id)?.name || '';
     const values = [
       String(spool.id),
       type,
       spool.color,
       String(spool.weight_total),
       String(spool.weight_remaining),
-      group
+      group,
+      manufacturer
     ].join(' ').toLowerCase();
     return values.includes(search.toLowerCase());
   });
@@ -297,18 +334,18 @@ useEffect(() => {
             />
           </Grid>
           <Grid item xs={12} md={3} display="flex" justifyContent="flex-end" alignItems="center">
-            <Button variant="contained" onClick={() => setOpen(true)} sx={{ width: '100%' }}>
+            <Button variant="contained" onClick={() => { fetchManufacturers(); setOpen(true); }} sx={{ width: '100%' }}>
               Добавить катушку
             </Button>
           </Grid>
         </Grid>
         {error && <Alert severity="error">{error}</Alert>}
-        <Paper sx={{ mt: 2, mb: 3, width: '100%' }}>
-          <Table sx={{ width: '100%', tableLayout: 'fixed' }}>
+        <Paper sx={{ mt: 2, mb: 3, width: '100%', overflowX: 'auto' }}>
+          <Table sx={{ minWidth: 900, tableLayout: 'auto' }} size="small">
             <TableHead>
               <TableRow>
-                <TableCell sx={{ wordBreak: 'break-word' }}>
-                  <Box display="flex" alignItems="center">
+                <TableCell align="center" sx={{ wordBreak: 'break-word', fontSize: '0.85rem', padding: '4px 8px' }}>
+                  <Box display="flex" alignItems="center" justifyContent="center">
                     ID
                     <IconButton size="small" onClick={() => setSort(s => ({ field: 'id', direction: s.field === 'id' && s.direction === 'asc' ? 'desc' : 'asc' }))}>
                       {sort.field === 'id' ? (
@@ -317,10 +354,10 @@ useEffect(() => {
                     </IconButton>
                   </Box>
                 </TableCell>
-                <TableCell sx={{ wordBreak: 'break-word' }}>Тип пластика</TableCell>
-                <TableCell sx={{ wordBreak: 'break-word' }}>Цвет</TableCell>
-                <TableCell sx={{ wordBreak: 'break-word' }}>
-                  <Box display="flex" alignItems="center">
+                <TableCell align="center" sx={{ wordBreak: 'break-word', fontSize: '0.85rem', padding: '4px 8px' }}>Тип пластика</TableCell>
+                <TableCell align="center" sx={{ wordBreak: 'break-word', fontSize: '0.85rem', padding: '4px 8px' }}>Цвет</TableCell>
+                <TableCell align="center" sx={{ wordBreak: 'break-word', fontSize: '0.85rem', padding: '4px 8px' }}>
+                  <Box display="flex" alignItems="center" justifyContent="center">
                     Общий вес (г)
                     <IconButton size="small" onClick={() => setSort(s => ({ field: 'weight_total', direction: s.field === 'weight_total' && s.direction === 'asc' ? 'desc' : 'asc' }))}>
                       {sort.field === 'weight_total' ? (
@@ -329,8 +366,8 @@ useEffect(() => {
                     </IconButton>
                   </Box>
                 </TableCell>
-                <TableCell sx={{ wordBreak: 'break-word' }}>
-                  <Box display="flex" alignItems="center">
+                <TableCell align="center" sx={{ wordBreak: 'break-word', fontSize: '0.85rem', padding: '4px 8px' }}>
+                  <Box display="flex" alignItems="center" justifyContent="center">
                     Остаток (г)
                     <IconButton size="small" onClick={() => setSort(s => ({ field: 'weight_remaining', direction: s.field === 'weight_remaining' && s.direction === 'asc' ? 'desc' : 'asc' }))}>
                       {sort.field === 'weight_remaining' ? (
@@ -339,33 +376,41 @@ useEffect(() => {
                     </IconButton>
                   </Box>
                 </TableCell>
-                {role === 'admin' && <TableCell sx={{ wordBreak: 'break-word' }}>Группа</TableCell>}
-                <TableCell sx={{ wordBreak: 'break-word' }}>QR</TableCell>
-                <TableCell sx={{ wordBreak: 'break-word' }}>Действия</TableCell>
+                {role === 'admin' && <TableCell align="center" sx={{ wordBreak: 'break-word', fontSize: '0.85rem', padding: '4px 8px' }}>Группа</TableCell>}
+                <TableCell align="center" sx={{ wordBreak: 'break-word', fontSize: '0.85rem', padding: '4px 8px' }}>QR</TableCell>
+                <TableCell align="center" sx={{ wordBreak: 'break-word', fontSize: '0.85rem', padding: '4px 8px' }}>Производитель</TableCell>
+                <TableCell align="center" sx={{ wordBreak: 'break-word', fontSize: '0.85rem', padding: '4px 8px' }}>Вес пустой катушки (г)</TableCell>
+                <TableCell align="center" sx={{ wordBreak: 'break-word', fontSize: '0.85rem', padding: '4px 8px' }}>Действия</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
               {pagedSpools.map(spool => (
                 <TableRow key={spool.id}>
-                  <TableCell>{spool.id}</TableCell>
-                  <TableCell>{plasticTypes.find(t => t.id === spool.plastic_type_id)?.name || '—'}</TableCell>
-                  <TableCell>{spool.color}</TableCell>
-                  <TableCell>{spool.weight_total}</TableCell>
-                  <TableCell>{spool.weight_remaining}</TableCell>
-                  {role === 'admin' && <TableCell>{groups.find(g => Number(g.id) === Number(spool.group_id))?.name || '—'}</TableCell>}
-                  <TableCell>
+                  <TableCell align="center" sx={{ fontSize: '0.95em', padding: '4px 8px' }}>{spool.id}</TableCell>
+                  <TableCell align="center" sx={{ fontSize: '0.95em', padding: '4px 8px' }}>{plasticTypes.find(t => t.id === spool.plastic_type_id)?.name || '—'}</TableCell>
+                  <TableCell align="center" sx={{ fontSize: '0.95em', padding: '4px 8px' }}>{spool.color}</TableCell>
+                  <TableCell align="center" sx={{ fontSize: '0.95em', padding: '4px 8px' }}>{spool.weight_total}</TableCell>
+                  <TableCell align="center" sx={{ fontSize: '0.95em', padding: '4px 8px' }}>{spool.weight_remaining}</TableCell>
+                  {role === 'admin' && <TableCell align="center" sx={{ fontSize: '0.95em', padding: '4px 8px' }}>{groups.find(g => Number(g.id) === Number(spool.group_id))?.name || '—'}</TableCell>}
+                  <TableCell align="center" sx={{ fontSize: '0.95em', padding: '4px 8px' }}>
                     {spool.qr_code_path ? (
                       <img
-                        src={spool.qr_code_path + '?v=' + Date.now()}
-                        alt={spool.qr_code_path}
-                        width={80}
-                        style={{ border: '1px solid red', verticalAlign: 'middle', maxWidth: '100%' }}
+                        src={spool.qr_code_path.startsWith('http') ? spool.qr_code_path : `${API_URL.replace(/\/$/, '')}/${spool.qr_code_path.replace(/^\//, '')}`}
+                        alt={`QR ${spool.id}`}
+                        style={{ width: 48, height: 48, objectFit: 'contain', display: 'block', margin: '0 auto' }}
+                        onError={e => { e.target.style.display = 'none'; }}
                       />
-                    ) : (
-                      '—'
-                    )}
+                    ) : '—'}
                   </TableCell>
-                  <TableCell>
+                  <TableCell align="center" sx={{ fontSize: '0.95em', padding: '4px 8px' }}>{spool.manufacturer_name || '—'}</TableCell>
+                  <TableCell align="center" sx={{ fontSize: '0.95em', padding: '4px 8px' }}>
+                    {
+                      typeof spool.empty_spool_weight !== 'undefined' && spool.empty_spool_weight !== null
+                        ? spool.empty_spool_weight
+                        : '—'
+                    }
+                  </TableCell>
+                  <TableCell align="center" sx={{ fontSize: '0.95em', padding: '4px 8px' }}>
                     <Grid container direction="column" spacing={1} sx={{ minWidth: 120 }}>
                       <Grid item>
                         <Button
@@ -462,6 +507,58 @@ useEffect(() => {
                 <Button onClick={() => setShowAddType(false)} size="small">Отмена</Button>
               </Box>
             )}
+            {/* --- ВЫБОР ПРОИЗВОДИТЕЛЯ --- */}
+            <Box display="flex" alignItems="center" gap={1}>
+              <Autocomplete
+                options={manufacturers.map(m => ({ label: m.name, id: m.id }))}
+                value={
+                  manufacturers.find(m => m.id === Number(form.manufacturer_id))
+                    ? { label: manufacturers.find(m => m.id === Number(form.manufacturer_id)).name, id: Number(form.manufacturer_id) }
+                    : null
+                }
+                onChange={(e, newValue) => {
+                  if (newValue && newValue.id) {
+                    setForm(f => ({ ...f, manufacturer_id: newValue.id }));
+                  } else {
+                    setForm(f => ({ ...f, manufacturer_id: '' }));
+                  }
+                }}
+                renderInput={(params) => (
+                  <TextField {...params} label="Производитель" margin="normal" fullWidth />
+                )}
+                sx={{ flex: 1 }}
+                isOptionEqualToValue={(option, value) => String(option.id) === String(value.id)}
+              />
+              <IconButton size="small" onClick={() => setShowAddManufacturer(true)} sx={{ mt: 2 }}>
+                <AddCircleOutlineIcon />
+              </IconButton>
+            </Box>
+            {showAddManufacturer && (
+              <Box display="flex" alignItems="center" gap={1} mt={1} mb={2}>
+                <TextField
+                  label="Название производителя"
+                  value={newManufacturer.name}
+                  onChange={e => setNewManufacturer(n => ({ ...n, name: e.target.value }))}
+                  size="small"
+                />
+                <TextField
+                  label="Вес пустой катушки (г)"
+                  type="number"
+                  value={newManufacturer.empty_spool_weight}
+                  onChange={e => setNewManufacturer(n => ({ ...n, empty_spool_weight: e.target.value }))}
+                  size="small"
+                />
+                <TextField
+                  label="Информация"
+                  value={newManufacturer.info}
+                  onChange={e => setNewManufacturer(n => ({ ...n, info: e.target.value }))}
+                  size="small"
+                />
+                <Button onClick={handleAddManufacturer} variant="outlined">Добавить</Button>
+                <Button onClick={() => setShowAddManufacturer(false)} size="small">Отмена</Button>
+              </Box>
+            )}
+            {/* --- КОНЕЦ ВЫБОРА ПРОИЗВОДИТЕЛЯ --- */}
             <TextField label="Цвет" value={form.color} onChange={e => setForm(f => ({ ...f, color: e.target.value }))} fullWidth margin="normal" />
             <TextField label="Вес (г)" type="number" value={form.weight_total} onChange={e => setForm(f => ({ ...f, weight_total: e.target.value }))} fullWidth margin="normal" />
             <TextField label="Остаток (г)" type="number" value={form.weight_remaining} onChange={e => setForm(f => ({ ...f, weight_remaining: e.target.value }))} fullWidth margin="normal" helperText="Если не указано — будет равен весу" />

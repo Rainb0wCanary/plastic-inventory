@@ -42,6 +42,8 @@ class SpoolOut(BaseModel):
     weight_remaining: float
     qr_code_path: str
     group_id: int | None = None
+    manufacturer_name: str | None = None
+    empty_spool_weight: float | None = None
     class Config:
         from_attributes = True
 
@@ -108,10 +110,22 @@ def create_spool(spool: SpoolCreate, db: Session = Depends(get_db), current_user
 @router.get("/", response_model=list[SpoolOut])
 def get_spools(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     is_admin = current_user.role and current_user.role.name == "admin"
-    if is_admin:
-        return db.query(Spool).all()
-    else:
-        return db.query(Spool).filter(Spool.group_id == current_user.group_id).all()
+    spools = db.query(Spool).all() if is_admin else db.query(Spool).filter(Spool.group_id == current_user.group_id).all()
+    result = []
+    for spool in spools:
+        manufacturer = spool.manufacturer
+        result.append(SpoolOut(
+            id=spool.id,
+            plastic_type_id=spool.plastic_type_id,
+            color=spool.color,
+            weight_total=spool.weight_total,
+            weight_remaining=spool.weight_remaining,
+            qr_code_path=spool.qr_code_path,
+            group_id=spool.group_id,
+            manufacturer_name=manufacturer.name if manufacturer else None,
+            empty_spool_weight=manufacturer.empty_spool_weight if manufacturer else None
+        ))
+    return result
 
 @router.get("/{spool_id}/download_qr")
 def download_qr(spool_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):

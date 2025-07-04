@@ -1,5 +1,5 @@
 from database import SessionLocal
-from models import Role, Group, User, Project, Spool, Usage, PlasticType
+from models import Role, Group, User, Project, Spool, Usage, PlasticType, PlasticManufacturer
 from sqlalchemy.exc import IntegrityError
 from datetime import datetime
 from passlib.hash import bcrypt
@@ -41,6 +41,22 @@ def seed_data():
                 db.add(PlasticType(name=t))
         db.commit()
 
+        # Производители пластика
+        manufacturers_data = [
+            {"name": "ESUN", "info": "Китайский производитель", "empty_spool_weight": 220.0},
+            {"name": "REC", "info": "Российский производитель", "empty_spool_weight": 240.0},
+            {"name": "Polymaker", "info": "Международный бренд", "empty_spool_weight": 200.0},
+        ]
+        manufacturers = {}
+        for m in manufacturers_data:
+            man = db.query(PlasticManufacturer).filter_by(name=m["name"]).first()
+            if not man:
+                man = PlasticManufacturer(**m)
+                db.add(man)
+                db.commit()
+                db.refresh(man)
+            manufacturers[m["name"]] = man
+
         # Пользователи (по одному для каждой роли)
         users = [
             {"username": "admin", "password": "adminpass", "role": roles["admin"], "group": groups["GroupA"]},
@@ -73,11 +89,21 @@ def seed_data():
                 db.add(project)
         db.commit()
 
-        # Катушки (используем первый стандартный тип пластика)
+        # Катушки (используем первый стандартный тип пластика и производителей)
         plastic_type = db.query(PlasticType).filter_by(name="PLA").first()
+        man_list = list(manufacturers.values())
         for i, group in enumerate(groups.values(), 1):
             for j in range(1, 21):
-                spool = Spool(plastic_type_id=plastic_type.id, color=f"Color{i}_{j}", weight_total=1000+j*10, weight_remaining=900-j*5, qr_code_path="", group_id=group.id)
+                manufacturer = man_list[(j-1) % len(man_list)]
+                spool = Spool(
+                    plastic_type_id=plastic_type.id,
+                    color=f"Color{i}_{j}",
+                    weight_total=1000+j*10,
+                    weight_remaining=900-j*5,
+                    qr_code_path="",
+                    group_id=group.id,
+                    manufacturer_id=manufacturer.id
+                )
                 db.add(spool)
                 db.commit()
                 db.refresh(spool)

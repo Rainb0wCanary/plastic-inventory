@@ -51,9 +51,11 @@ class Spool(Base):
     weight_remaining = Column(Float)
     qr_code_path = Column(String)
     group_id = Column(Integer, ForeignKey("groups.id"), nullable=True)  # Привязка к группе
+    manufacturer_id = Column(Integer, ForeignKey("plastic_manufacturers.id"), nullable=True)  # Привязка к производителю
 
     plastic_type = relationship("PlasticType", back_populates="spools")
     usages = relationship("Usage", back_populates="spool")
+    manufacturer = relationship("PlasticManufacturer", back_populates="spools")
 
 
 class Usage(Base):
@@ -81,3 +83,12 @@ class PlasticType(Base):
     user_id = Column(Integer, ForeignKey("users.id"), nullable=True)  # null для стандартных, user_id для пользовательских
     user = relationship("User", back_populates="plastic_types")
     spools = relationship("Spool", back_populates="plastic_type")
+
+
+class PlasticManufacturer(Base):
+    __tablename__ = "plastic_manufacturers"
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, unique=True, nullable=False)
+    info = Column(String, nullable=True)  # Доп. информация о производителе
+    empty_spool_weight = Column(Float, nullable=False)  # Вес пустой катушки (граммы)
+    spools = relationship("Spool", back_populates="manufacturer")

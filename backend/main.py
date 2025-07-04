@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from database import Base, engine
-from routers import spools, usage, auth, projects, roles_groups, plastic_types, decode_qr
+from routers import spools, usage, auth, projects, roles_groups, plastic_types, decode_qr, plastic_manufacturers
 from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI()
@@ -28,6 +28,7 @@ app.include_router(projects.router, prefix="/projects")
 app.include_router(roles_groups.router, prefix="/roles_groups")
 app.include_router(plastic_types.router, prefix="/plastic_types")
 app.include_router(decode_qr.router, prefix="/spools")
+app.include_router(plastic_manufacturers.router, prefix="/manufacturers")
 
 # Прокси-роут для /groups/ (чтобы фронт работал без изменений)
 from fastapi import Depends
