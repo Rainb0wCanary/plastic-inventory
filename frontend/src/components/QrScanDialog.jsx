@@ -11,6 +11,7 @@ export default function QrScanDialog({ open, onClose, onResult }) {
   const fileInputRef = useRef();
   const qrRef = useRef();
   const html5QrCodeRef = useRef();
+  const cameraStreamRef = useRef(null);
 
   // Остановка камеры
   const stopCamera = async () => {
@@ -26,18 +27,30 @@ export default function QrScanDialog({ open, onClose, onResult }) {
     // Очищаем DOM div с камерой
     if (qrRef.current) {
       qrRef.current.innerHTML = '';
+      // Принудительно закрываем все потоки камеры
+      const video = qrRef.current.querySelector('video');
+      if (video && video.srcObject) {
+        video.srcObject.getTracks().forEach(track => track.stop());
+        video.srcObject = null;
+      }
+    }
+    // Явно останавливаем сохранённый MediaStream
+    if (cameraStreamRef.current) {
+      cameraStreamRef.current.getTracks().forEach(track => track.stop());
+      cameraStreamRef.current = null;
     }
   };
 
   // Сканирование с камеры
   useEffect(() => {
     let isActive = true;
+    let isMounted = true;
     if (!open || tab !== 0) {
       stopCamera();
       return;
     }
-    // Перед созданием нового экземпляра — стоп и очистка
     stopCamera().then(() => {
+      if (!isMounted) return;
       setError('');
       if (qrRef.current) {
         html5QrCodeRef.current = new Html5Qrcode(qrRef.current.id);
@@ -45,6 +58,7 @@ export default function QrScanDialog({ open, onClose, onResult }) {
           { facingMode: "environment" },
           { fps: 10, qrbox: 250 },
           (decodedText) => {
+            if (!isMounted) return;
             setError('');
             onResult(decodedText);
             if (isActive && html5QrCodeRef.current) {
@@ -55,17 +69,25 @@ export default function QrScanDialog({ open, onClose, onResult }) {
             onClose();
           },
           (err) => {
+            if (!isMounted) return;
             if (err && !err.toString().includes('NotFoundException')) setError('Ошибка камеры: ' + err);
           }
-        );
+        ).then(() => {
+          // Сохраняем MediaStream после старта
+          const video = qrRef.current.querySelector('video');
+          if (video && video.srcObject) {
+            cameraStreamRef.current = video.srcObject;
+          }
+        });
       }
     });
     return () => {
       isActive = false;
+      isMounted = false;
       stopCamera();
     };
-    // Ключевой момент: qrRef.current в зависимостях!
-  }, [open, tab, qrRef.current]);
+    // Ключевой момент: зависимости только open и tab!
+  }, [open, tab]);
 
   // Сканирование с фото
   const handleFileChange = async e => {

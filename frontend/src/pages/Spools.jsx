@@ -60,7 +60,6 @@ export default function Spools() {
     try {
       const res = await api.get('/manufacturers/');
       setManufacturers(res.data);
-      console.log('Загруженные производители:', res.data);
     } catch (e) {
       setManufacturers([]);
       setError('Ошибка загрузки производителей: ' + (e?.response?.data?.detail || e.message || e));
