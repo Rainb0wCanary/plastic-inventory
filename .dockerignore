@@ -1,0 +1,19 @@
+# Исключить базу данных из сборки Docker
+backend/plastic.db
+
+# Кэш и временные файлы Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Виртуальные окружения
+venv/
+ENV/
+.env
+
+# Логи
+*.log
+
+# node_modules для frontend
+frontend/node_modules/

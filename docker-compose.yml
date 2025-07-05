@@ -13,7 +13,6 @@ services:
     restart: unless-stopped
     volumes:
       - ./backend/static:/app/static
-      - ./backend/plastic.db:/app/plastic.db
 
   frontend:
     build:

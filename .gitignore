@@ -60,10 +60,9 @@ alembic/versions/
 # OS
 .DS_Store
 Thumbs.db
-PROJECT_DESCRIPTION_FOR_AI.md
 
 # Исключить QR-коды
 backend/static/qr_codes/*
-
+backend/static/qr_codes/*.png
 
 backend/railway.json
