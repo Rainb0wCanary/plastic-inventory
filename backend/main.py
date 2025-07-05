@@ -3,6 +3,7 @@ from fastapi.staticfiles import StaticFiles
 from database import Base, engine
 from routers import spools, usage, auth, projects, roles_groups, plastic_types, decode_qr, plastic_manufacturers
 from fastapi.middleware.cors import CORSMiddleware
+import os
 
 app = FastAPI()
 
@@ -11,9 +12,19 @@ Base.metadata.create_all(bind=engine)
 from routers.roles_groups import ensure_default_roles, get_groups
 ensure_default_roles()
 
+# --- CORS настройка ---
+# Можно задать переменную окружения ALLOWED_ORIGINS через .env или панель хостинга
+# Например: ALLOWED_ORIGINS=https://plastic-inventory.vercel.app,https://другой-домен
+allowed_origins = os.getenv("ALLOWED_ORIGINS")
+if allowed_origins:
+    origins = [origin.strip() for origin in allowed_origins.split(",") if origin.strip()]
+else:
+    # По умолчанию только фронтенд-домен
+    origins = ["https://plastic-inventory.vercel.app"]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -37,7 +48,6 @@ def proxy_groups(db: roles_groups.Session = Depends(roles_groups.get_db), curren
     return get_groups(db, current_user)
 
 if __name__ == "__main__":
-    import os
     import uvicorn
     port = int(os.environ.get("PORT", 8000))
     uvicorn.run("main:app", host="0.0.0.0", port=port)
