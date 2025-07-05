@@ -195,6 +195,45 @@ h5, .MuiTypography-h5 {
   }
 }
 
+/* --- Адаптивность таблиц и контейнеров для мобильных устройств --- */
+@media (max-width: 900px) {
+  .main-container, #root {
+    padding: 0.5rem 0.2rem !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+  }
+  .MuiPaper-root {
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    padding: 0.5rem 0.2rem !important;
+  }
+  .MuiTypography-h5, h5 {
+    font-size: 1.3rem !important;
+    margin-bottom: 0.7rem !important;
+  }
+}
+
+@media (max-width: 600px) {
+  .main-container, #root {
+    padding: 0.2rem 0.1rem !important;
+  }
+  .MuiTable-root, .MuiPaper-root, table {
+    font-size: 0.85rem !important;
+  }
+  .MuiTableCell-root, th, td {
+    padding: 2px 4px !important;
+    font-size: 0.8rem !important;
+  }
+}
+
+/* Горизонтальный скролл для таблиц на мобильных */
+.MuiPaper-root, .MuiTableContainer-root {
+  overflow-x: auto !important;
+}
+.MuiTable-root {
+  min-width: 600px;
+}
+
 ::-webkit-scrollbar {
   width: 10px;
   background: #e5fdff;
@@ -207,4 +246,39 @@ h5, .MuiTypography-h5 {
 /* Плавная прокрутка */
 html {
   scroll-behavior: smooth;
+}
+
+@media (max-width: 700px) {
+  .MuiAppBar-root .MuiToolbar-root {
+    flex-wrap: wrap;
+    flex-direction: column;
+    align-items: flex-start;
+    min-height: 56px !important;
+    padding: 4px 0 !important;
+  }
+  .MuiAppBar-root .MuiToolbar-root > * {
+    margin-bottom: 4px !important;
+    margin-right: 0 !important;
+    font-size: 0.95em !important;
+    min-width: 90vw;
+    max-width: 100vw;
+    box-sizing: border-box;
+  }
+  .MuiAppBar-root .MuiToolbar-root img {
+    margin-bottom: 8px !important;
+    margin-right: 0 !important;
+    height: 28px !important;
+  }
+  .MuiAppBar-root .MuiButton-root {
+    min-width: 100%;
+    padding-left: 0.5em !important;
+    padding-right: 0.5em !important;
+    font-size: 1em !important;
+  }
+}
+
+@media (max-width: 400px) {
+  .MuiAppBar-root .MuiToolbar-root > * {
+    font-size: 0.85em !important;
+  }
 }

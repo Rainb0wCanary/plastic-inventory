@@ -4,6 +4,9 @@ from database import Base, engine
 from routers import spools, usage, auth, projects, roles_groups, plastic_types, decode_qr, plastic_manufacturers
 from fastapi.middleware.cors import CORSMiddleware
 import os
+from dotenv import load_dotenv  # <--- добавлено
+
+load_dotenv()  # <--- добавлено
 
 app = FastAPI()
 
