@@ -100,9 +100,12 @@ useEffect(() => {
       if (role === 'admin' && form.group_id) {
         payload.group_id = Number(form.group_id);
       }
+      if (form.manufacturer_id) {
+        payload.manufacturer_id = Number(form.manufacturer_id);
+      }
       await api.post('/spools/', payload);
       setOpen(false);
-      setForm({ plastic_type_id: '', color: '', weight_total: '', weight_remaining: '', group_id: '' });
+      setForm({ plastic_type_id: '', color: '', weight_total: '', weight_remaining: '', group_id: '', manufacturer_id: '' });
       fetchSpools();
     } catch {
       setError('Ошибка создания катушки');

@@ -33,6 +33,7 @@ class SpoolCreate(BaseModel):
     weight_total: float
     weight_remaining: float | None = None
     group_id: int | None = None  # Для админа
+    manufacturer_id: int | None = None  # Добавлено поле производителя
 
 class SpoolOut(BaseModel):
     id: int
@@ -85,7 +86,8 @@ def create_spool(spool: SpoolCreate, db: Session = Depends(get_db), current_user
         color=spool.color,
         weight_total=spool.weight_total,
         weight_remaining=weight_remaining,
-        group_id=group_id
+        group_id=group_id,
+        manufacturer_id=spool.manufacturer_id  # Сохраняем производителя
     )
     db.add(new_spool)
     db.commit()
