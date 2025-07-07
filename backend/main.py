@@ -5,6 +5,7 @@ from routers import spools, usage, auth, projects, roles_groups, plastic_types, 
 from fastapi.middleware.cors import CORSMiddleware
 import os
 from dotenv import load_dotenv  # <--- добавлено
+from fastapi.openapi.utils import get_openapi
 
 load_dotenv()  # <--- добавлено
 
@@ -49,6 +50,21 @@ from fastapi import Depends
 @app.get("/groups/", response_model=list[roles_groups.GroupOut])
 def proxy_groups(db: roles_groups.Session = Depends(roles_groups.get_db), current_user: roles_groups.User = Depends(roles_groups.get_current_user)):
     return get_groups(db, current_user)
+
+# Кастомизация OpenAPI
+def custom_openapi():
+    if app.openapi_schema:
+        return app.openapi_schema
+    openapi_schema = get_openapi(
+        title="Plastic Inventory API",
+        version="1.0.0",
+        description="API для управления инвентарем пластика. Команда SJ team: Telegram: @RainbowCanary, Discord: rainbowcanary, Email: rainbowcanaryyt@gmail.com",
+        routes=app.routes,
+    )
+    app.openapi_schema = openapi_schema
+    return app.openapi_schema
+
+app.openapi = custom_openapi
 
 if __name__ == "__main__":
     import uvicorn

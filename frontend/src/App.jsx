@@ -14,6 +14,7 @@ import QrScanDialog from './components/QrScanDialog';
 import CameraAltIcon from '@mui/icons-material/CameraAlt';
 import SpoolInfoDialog from './components/SpoolInfoDialog';
 import api from './api/axios';
+import Footer from './components/Footer';
 
 function App() {
   const [count, setCount] = useState(0)
@@ -183,6 +184,7 @@ function App() {
         {token && <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />}
         {token && <Route path="*" element={<Navigate to="/spools" />} />}
       </Routes>
+      <Footer />
     </>
   );
 }
